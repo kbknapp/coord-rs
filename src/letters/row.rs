@@ -29,9 +29,9 @@ impl RowLetter {
         ### Return
          * The northing value for the given letter and set.
         */
-        let c: char = (*self).into();
+        let c: char = self.into();
         if c as u8 > ascii::V {
-            return Err(Errors::InvalidNorthingChar((*self).into()));
+            return Err(Errors::InvalidNorthingChar(self.into()));
         }
 
         // rowOrigin is the letter at the origin of the set for the
@@ -120,5 +120,50 @@ impl From<char> for RowLetter {
 impl Default for RowLetter {
     fn default() -> Self {
         RowLetter::A
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::RowLetter;
+
+    #[test]
+    fn from_char() {
+        let a = 'a';
+        let cl = RowLetter::from(a);
+        assert_eq!(cl, RowLetter::A);
+
+        let a = 'A';
+        let cl = RowLetter::from(a);
+        assert_eq!(cl, RowLetter::A);
+    }
+
+    #[test]
+    fn from_u32() {
+        let c: u32 = 99;
+        let cl = RowLetter::from(c);
+        assert_eq!(cl, RowLetter::C);
+
+        let c: u32 = 67;
+        let cl = RowLetter::from(c);
+        assert_eq!(cl, RowLetter::C);
+    }
+
+    #[test]
+    fn from_str() {
+        let c = "c";
+        let cl: RowLetter = c.parse();
+        assert_eq!(cl, Ok(RowLetter::C));
+
+        let c = "C";
+        let cl: RowLetter = c.parse();
+        assert_eq!(cl, Ok(RowLetter::C));
+    }
+
+    #[test]
+    fn to_char() {
+        let cl = RowLetter::C;
+        let c = char::from(cl);
+        assert_eq!(c, 'C');
     }
 }

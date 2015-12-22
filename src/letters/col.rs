@@ -95,3 +95,48 @@ impl Default for ColLetter {
         ColLetter::A
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::ColLetter;
+    
+    #[test]
+    fn from_char() {
+        let a = 'a';
+        let cl = ColLetter::from(a);
+        assert_eq!(cl, ColLetter::A);
+
+        let a = 'A';
+        let cl = ColLetter::from(a);
+        assert_eq!(cl, ColLetter::A);
+    }
+
+    #[test]
+    fn from_u32() {
+        let c: u32 = 99;
+        let cl = ColLetter::from(c);
+        assert_eq!(cl, ColLetter::C);
+
+        let c: u32 = 67;
+        let cl = ColLetter::from(c);
+        assert_eq!(cl, ColLetter::C);
+    }
+
+    #[test]
+    fn from_str() {
+        let c = "c";
+        let cl: ColLetter = c.parse();
+        assert_eq!(cl, Ok(ColLetter::C));
+
+        let c = "C";
+        let cl: ColLetter = c.parse();
+        assert_eq!(cl, Ok(ColLetter::C));
+    }
+
+    #[test]
+    fn to_char() {
+        let cl = ColLetter::C;
+        let c = char::from(cl);
+        assert_eq!(c, 'C');
+    }
+}
