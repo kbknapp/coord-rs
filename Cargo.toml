@@ -9,10 +9,10 @@ repository = "https://github.com/kbknapp/mgrs-rs.git"
 documentation = "http://kbknapp.github.io/mgrs-rs"
 readme = "README.md"
 license = "MIT"
-keywords = ["mgrs", "lat", "long", "latitude", "longitude"]
+keywords = ["mgrs", "lat", "lon", "latitude", "longitude"]
 
 [dependencies]
-clippy    = { version = "~0.0.31", optional = true }
+clippy    = { version = "~0.0.32", optional = true }
 
 [features]
 default     = []
