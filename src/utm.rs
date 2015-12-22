@@ -4,18 +4,68 @@ use latlon::LatLon;
 use Mgrs;
 use Accuracy;
 use ZoneLetter;
+use Datum;
 
 #[derive(Default, Copy, Clone, Debug)]
 pub struct Utm {
-    /// Grid Zone Designator such as 26F
-    pub gzd: Gzd,
-    /// easting
-    pub e: f64,
-    /// northing
-    pub n: f64
+    /// UTM 6° longitudinal zone (1..60 inclusive covering 180°W..180°E).
+    pub zone: u8,
+    /// N for northern hemisphere, S for southern hemisphere.
+    pub hemisphere: Hemisphere,
+    /// Easting in metres from false easting (-500km from central meridian).
+    pub easting: i32,
+    /// Northing in metres from equator (N) or from false northing -10,000km (S).
+    pub northing: i32,
+    /// Datum UTM coordinate is based on.
+    pub datum: Datum,
+    /// Meridian convergence (bearing of grid north clockwise from true north), in degrees
+    pub convergence: Option<f64>,
+    /// Grid scale factor
+    pub scale: Option<f64>,
+
 }
 
-impl Utm {
+impl<H, D> Utm
+    where H: Into<Hemisphere>,
+          D: Into<Datum> {
+    fn new(zone: u8, hemisphere: H, easting: i32, northing: i32) -> Self {
+        /*!
+        Creates a `Utm` coordinate struct.
+
+        ### Params
+            * **zone**: UTM 6° longitudinal zone (1..60 covering 180°W..180°E).
+            * **hemisphere**: N for northern hemisphere, S for southern hemisphere.
+            * **easting**: Easting in metres from false easting (-500km from central meridian).
+            * **northing**: Northing in metres from equator (N) or from false northing -10,000km (S).
+
+        # Examples
+
+        ```
+        let utm_coord = Utm::new(31, 'N', 448251, 5411932);
+        ```
+
+        # Panics
+
+        This function will panic if an invalid zone number is passed as the `zone` param. valid
+        values are 1..60 inclusive
+        */
+
+        if !(1<=zone && zone<=60) { panic!("Invalid UTM zone {}", zone); }
+        // range-check easting/northing (with 40km overlap between zones) - this this worthwhile?
+        //if (!(120e3<=easting && easting<=880e3)) throw new Error('Invalid UTM easting '+ easting);
+        //if (!(0<=northing && northing<=10000e3)) throw new Error('Invalid UTM northing '+ northing);
+
+        Umt {
+            zone: zone,
+            hemisphere: hemisphere.into(),
+            easting: easting,
+            northing: northing,
+            datum: Datum::Wgs84,
+            convergence: None,
+            scale: None,
+        }
+    }
+
     pub fn from_ll(ll: &LatLon) -> Self {
         /*!
         Converts a set of lonitude and latitude co-ordinates to UTM using the WGS84 ellipsoid.

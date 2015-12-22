@@ -1,7 +1,8 @@
 # mgrs-rs
 a library for converting between and using Latitude / Longitude and MGRS
 
-Originally ported from and based on [proj4js/mgrs](https://github.com/proj4js/mgrs)
+Originally ported from and based on [proj4js/mgrs](https://github.com/proj4js/mgrs) and Chris Veness's work which was based on Karney 2011
+‘Transverse Mercator with an accuracy of a few nanometers’, building on Krüger 1912 ‘Konforme Abbildung des Erdellipsoids in der Ebene’.
 
 ## License
 

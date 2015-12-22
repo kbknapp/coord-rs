@@ -109,7 +109,12 @@ impl LatLon {
         })
     }
 
-    pub fn from_mgrs<M: Into<Mgrs>>(m: M) -> Option<[LatLon; 2]> {
+    pub fn from_mgrs<M: Into<Mgrs>>(mgrs: M) -> LatLon {
+        let m = mgrs.into();
+        m.to_ll()
+    }
+
+    pub fn rect_from_mgrs<M: Into<Mgrs>>(m: M) -> Option<[LatLon; 2]> {
         let mgrs = m.into();
         let bl = LatLon::from_utm(&mgrs.utm).expect("failed to convert MGRS to Lat/Lon");
 

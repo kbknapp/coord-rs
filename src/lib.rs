@@ -18,10 +18,14 @@ mod gzd;
 mod utm;
 mod latlon;
 mod ascii;
-mod letters;
 mod mgrs;
 mod accuracy;
 mod parser;
+mod datum;
+mod hemisphere;
+mod band;
+mod col;
+mod row;
 
 pub use errors::Errors;
 pub use letters::ZoneLetter;

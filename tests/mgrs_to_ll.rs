@@ -2,11 +2,18 @@ extern crate mgrs;
 
 #[test]
 fn mgrs_to_ll_point() {
-    let ll = LatLon::from("33UXP04");
-    assert_eq!(ll[0].lat, 16.41450); // May need to change to close to
-    assert_eq!(ll[0].lon, 0.000001);
-    assert_eq!(ll[1].lat, 48.24949); // May need to change to close to
-    assert_eq!(ll[1].lon, 0.000001);
+    let ll = LatLon::from_mgrs("33UXP04");
+
+    assert_eq!(ll.lat, 48.2053484);
+    assert_eq!(ll.lon, 16.3459270);
+
+    let ll = LatLon::rect_from_mgrs("33UXP04");
+
+    assert_eq!(ll[0].lon, 16.41450); // May need to change to close to
+    assert_eq!(ll[0].lat, 0.000001);
+    assert_eq!(ll[1].lon, 48.24949); // May need to change to close to
+    assert_eq!(ll[1].lat, 0.000001);
+
 
     // it('MGRS reference with highest accuracy correct.', function() {
     // mgrs.forward(point).should.equal("33UXP0500444998");
