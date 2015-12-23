@@ -4,48 +4,37 @@ use Errors;
 use SET_ORIGIN_COLUMN_LETTERS;
 
 #[derive(PartialEq, PartialOrd, Debug, Copy, Clone)]
+/// 100km grid square column letters
+///
+/// Repeats every third zone with sets: 'ABCDEFGH', 'JKLMNPQR', 'STUVWXYZ'
 pub enum ColLetter {
     A, B, C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V, W, X, Y, Z
 }
 
+
 impl ColLetter {
-    pub fn get_easting_with_set(&self, set: u8) -> Result<f64, Errors> {
-        /*!
-        Given the first letter from a two-letter MGRS 100k zone, and given the
-        MGRS table set for the zone number, figure out the easting value that
-        should be added to the other, secondary easting value.
+    pub fn as_meters_from_zone(&self, zone: u8) -> usize {
+        // get easting specified by e100k
+        self.index_from_set((zone-1)%3) * 100000
+    }
 
-        ### Params
-         * **e**: The first letter from a two-letter MGRS 100´k zone.
-         * **set The MGRS table set for the zone number.
-        ### Return
-         * The easting value for the given letter and set.
-        */
-        // cur_col is the letter at the origin of the set for the column
-        let mut cur_col = SET_ORIGIN_COLUMN_LETTERS[(set - 1) as usize];
-        let mut easting_val: f64 = 100000.0;
-        let mut rewind_marker = false;
-
-        let c: char = (*self).into();
-        while cur_col != c as u8 {
-            cur_col += 1;
-            if cur_col == ascii::I {
-                cur_col += 1;
-            }
-            if cur_col == ascii::O {
-                cur_col += 1;
-            }
-            if cur_col > ascii::Z {
-                if rewind_marker {
-                    return Err(Errors::InvalidEastingChar((*self).into()));
-                }
-                cur_col = ascii::A;
-                rewind_marker = true;
-            }
-            easting_val += 100000.0;
+    fn index_from_set(&self, set: u8) -> usize {
+        use self::ColLetter::{A, B, C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V, W, X, Y, Z};
+        match set {
+            1 => match *self {
+                A => 0, B => 1, C => 2, D => 3, E => 4, F => 5, G => 6, H => 7,
+                _ => panic!("Invalid e100k letter for set 1")
+            },
+            2 => match *self {
+                J => 0, K => 1, L => 2, M => 3, N => 4, P => 5, Q => 6, R => 7,
+                _ => panic!("Invalid e100k letter for set 2")
+            },
+            3 => match *self {
+                S => 0, T => 1, U => 2, V => 3, W => 4, X => 5, Y => 6, Z => 7,
+                _ => panic!("Invalid e100k letter for set 3")
+            },
+            _ => panic!("Invalid e100k set"),
         }
-
-        Ok(easting_val)
     }
 }
 
@@ -99,7 +88,7 @@ impl Default for ColLetter {
 #[cfg(test)]
 mod test {
     use super::ColLetter;
-    
+
     #[test]
     fn from_char() {
         let a = 'a';

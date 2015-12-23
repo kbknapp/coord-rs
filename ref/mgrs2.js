@@ -260,8 +260,6 @@ Utm.parse = function(utmCoord, datum) {
     return new Utm(zone, hemisphere, easting, northing, datum);
 };
 
-
-
 /** Extend Number object with method to pad with leading zeros to make it w chars wide
  *  (q.v. stackoverflow.com/questions/2998784 */
 if (Number.prototype.pad === undefined) {
@@ -271,20 +269,6 @@ if (Number.prototype.pad === undefined) {
         return n;
     };
 }
-
-/**
- * 100km grid square column (‘e’) letters repeat every third zone
- * @private
- */
-Mgrs.e100kLetters = [ 'ABCDEFGH', 'JKLMNPQR', 'STUVWXYZ' ];
-
-
-/**
- * 100km grid square row (‘n’) letters repeat every other zone
- * @private
- */
-Mgrs.n100kLetters = ['ABCDEFGHJKLMNPQRSTUV', 'FGHJKLMNPQRSTUVABCDE'];
-
 
 /**
  * Converts UTM coordinate to MGRS reference.
@@ -327,44 +311,6 @@ Utm.toMgrs() {
 };
 
 
-/**
- * Converts MGRS grid reference to UTM coordinate.
- *
- * @returns {Utm}
- *
- * @example
- *   var mgrsRef = Mgrs(31, 'U', 'D', 'Q', 448251, 11932);
- *   var utmCoord = mgrsRef.toUtm(); // utmCoord.toString() = '31 N 448251 5411932'
- */
-Mgrs.toUtm() {
-    var zone = this.zone;
-    var band = this.band;
-    var e100k = this.e100k;
-    var n100k = this.n100k;
-    var easting = this.easting;
-    var northing = this.northing;
-
-    var hemisphere = band>='N' ? 'N' : 'S';
-
-    // get easting specified by e100k
-    var col = Mgrs.e100kLetters[(zone-1)%3].indexOf(e100k) + 1; // TODO: why +1?
-    var e100kNum = col * 100000; // e100k in metres
-
-    // get northing specified by n100k
-    var row = Mgrs.n100kLetters[(zone-1)%2].indexOf(n100k);
-    var n100kNum = row * 100000; // n100k in metres
-
-    // get latitude of (bottom of) band
-    var latBand = (Mgrs.latBands.indexOf(band)-10)*8;
-
-    // 100km grid square row letters repeat every 2,000km north; add enough 2,000km blocks to get
-    // into required band
-    var nBand = new LatLon(latBand, 0).toUtm().northing; // northing of bottom of band
-    var n2M = 0; // northing of 2,000km block
-    while (n2M + n100kNum + northing < nBand) n2M += 2000000;
-
-    return new Utm(zone, hemisphere, e100kNum+easting, n2M+n100kNum+northing);
-};
 
 
 /**

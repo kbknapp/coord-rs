@@ -1,49 +1,126 @@
 use std::str::FromStr;
+use std::fmt;
 
 use Utm;
 use Accuracy;
-use gzd::GridSquareId100k;
+use gzd::{Gzd, GridSquareId100k};
 use LatLon;
 use parser::MgrsParser;
+use Lat;
+use row::RowLetter;
+use col::ColLetter;
+use band::LatBand;
+use datum::Datum;
+
+fn get_accuracy(e: usize, n: usize) -> Option<Accuracy> {
+    /*!
+    Converts a number to grid reference, then calculates significant digits
+
+    # Examples
+
+    ```
+    // in MGRS: 00001 02500
+    assert_eq!(Accuracy::One, get_accuracy(1, 2500));
+    // in MGRS: 00025 00250
+    assert_eq!(Accuracy::One, get_accuracy(25, 250));
+    // in MGRS: 00050 00500
+    assert_eq!(Accuracy::Ten, get_accuracy(50, 500));
+    // in MGRS: 00200 01000
+    assert_eq!(Accuracy::OneHundred, get_accuracy(200, 1000));
+    ```
+    */
+    let e_s = format!("{0:0>5}", e);
+    let n_s = format!("{0:0>5}", n);
+    let e_st = e_s.trim_right_matches('0');
+    let n_st = n_s.trim_right_matches('0');
+    if e_st.len() >= n_st.len() {
+        Accuracy::from_num_digits(e_st.len())
+    } else {
+        Accuracy::from_num_digits(n_st.len())
+    }
+}
 
 #[derive(Default, Copy, Clone, Debug)]
 pub struct Mgrs {
     pub gzd: Gzd,
     pub gsid_100k: GridSquareId100k,
+    pub easting: usize,
+    pub northing: usize,
     pub accuracy: Accuracy,
 }
 
 impl Mgrs {
-    fn new(zone, band, e100k, n100k, easting, northing, datum) {
+    fn new<L, R, C, D>(zone: u8, band: L, e100k: R, n100k: C, easting: usize, northing: usize, datum: D) -> Self
+        where L: Into<LatBand>,
+              R: Into<RowLetter>,
+              C: Into<ColLetter>,
+              D: Into<Datum> {
         /*!
         Creates an Mgrs grid reference object.
 
-        @classdesc Convert MGRS grid references to/from UTM coordinates.
+        ### Params
 
-        @constructor
-        @param  {number} zone - 6° longitudinal zone (1..60 covering 180°W..180°E).
-        @param  {string} band - 8° latitudinal band (C..X covering 80°S..84°N).
-        @param  {string} e100k - First letter (E) of 100km grid square.
-        @param  {string} n100k - Second letter (N) of 100km grid square.
-        @param  {number} easting - Easting in metres within 100km grid square.
-        @param  {number} northing - Northing in metres within 100km grid square.
-        @param  {LatLon.datum} [datum=WGS84] - Datum UTM coordinate is based on.
-        @throws {Error} Invalid MGRS grid reference
+         * **zone**: 6° longitudinal zone (1..60 covering 180°W..180°E).
+         * **band**: 8° latitudinal band (C..X covering 80°S..84°N).
+         * **e100k**: First letter (E) of 100km grid square.
+         * **n100k**: Second letter (N) of 100km grid square.
+         * **easting**: Easting in metres within 100km grid square (without leading `0`s).
+         * **northing**: Northing in metres within 100km grid square (without leading `0`s).
+         * **datum**: Datum UTM coordinate is based on.
 
-        @example
-          var mgrsRef = new Mgrs(31, 'U', 'D', 'Q', 48251, 11932); // 31U DQ 48251 11932
+        # Panics
+
+        If invalid MGRS grid reference northing or easting (such as either greater than 5 digits)
+
+        # Examples
+
+        ```
+        let mgrs = Mgrs::new(31, 'U', 'D', 'Q', 48251, 11932);
+        assert_eq!("31U DQ 48251 11932", &*mgrs.to_string());
+        ```
         */
 
-        if (band.length != 1) throw new Error('Invalid MGRS grid reference');
-        if (Mgrs.latBands.indexOf(band) == -1) throw new Error('Invalid MGRS grid reference');
-        if (e100k.length!=1 || n100k.length!=1) throw new Error('Invalid MGRS grid reference');
+        Mgrs {
+            gzd: Gzd { zone: zone, band: band },
+            gsid_100k: GridSquareId100k{ col: e100k, row: n100k },
+            easting: easting,
+            northing: northing,
+            accuracy: self::get_accuracy(easting, northing).expect("Invalid MGRS grid")
+        }
+    }
 
-        this.zone = Number(zone);
-        this.band = band;
-        this.e100k = e100k;
-        this.n100k = n100k;
-        this.easting = Number(easting);
-        this.northing = Number(northing);
+    fn as_utm(&self) -> Utm {
+        /*!
+        Converts MGRS grid reference to UTM coordinate.
+
+        ### Returns
+         * A `Utm` struct
+
+        # Examples
+
+        ```
+        let mgrs = Mgrs::from("31U DQ 448251 11932");
+        let utm = mgrs.as_utm();
+        assert_eq!(&*utm.as_string(6), "31 N 448251 541193");
+        ```
+        */
+
+        // get easting specified by e100k
+        let e100k_num = self.gsid_100k.col.as_meters_from_zone(self.gzd.zone);
+
+        // get northing specified by n100k
+        let n100k_num = self.gsid_100k.row.as_meters_from_zone(self.gzd.zone);
+
+        // get latitude of (bottom of) band
+        let lat_band: Lat = self.gzd.band.into();
+
+        // 100km grid square row letters repeat every 2,000km north; add enough 2,000km blocks to get
+        // into required band
+        let n_band = LatLon::new(lat_band, 0).to_utm().northing; // northing of bottom of band
+        let mut n2m = 0; // northing of 2,000km block
+        while (n2m + n100k_num + self.northing) < n_band { n2m += 2000000; }
+
+        Utm::new(self.gzd.zone, self.gzd.band, e100k_num + self.easting, n2m + n100k_num + self.northing)
     }
 
     pub fn to_ll_rect(self) -> [LatLon; 2] {
@@ -82,7 +159,7 @@ impl Mgrs {
         LatLon::from(self.utm)
     }
 
-    as_string(&self, accuracy: Accuracy) -> String {
+    fn as_string(&self, accuracy: Accuracy) -> String {
         /*!
         Returns a string representation of an MGRS grid reference.
 
@@ -108,43 +185,13 @@ impl Mgrs {
         ```
         */
 
-        let digits = (accuracy.as_num_digits() / 2);
+        let digits = accuracy.as_num_digits() / 2;
         // set required precision
         let easting = (f64::floor(self.easting / f64::powi(10, 5 - digits))) as usize;
         let northing = (f64::floor(self.northing / f64::powi(10, 5 - digits))) as usize;
 
-        format!("{0:02}{} {}{} {4:0<6$} {5:0<6$}", self.gzd.zone, self.gzd.band, , self.gsid_100k.col, self.gsid_100k.row, ,easting, northing, digits)
+        format!("{0:02}{1} {2}{3} {4:0<6$} {5:0<6$}", self.gzd.zone, self.gzd.band, self.gsid_100k.col, self.gsid_100k.row, easting, northing, digits)
     }
-
-    to_string(&self, accuracy: Accuracy) -> String {
-        /*!
-        Returns a string representation of an MGRS grid reference and consumes `self`.
-
-        To distinguish from civilian UTM coordinate representations, no space is included within
-        the zone/band grid zone designator. Single digit zones are padded with a leading `0`.
-
-        Components are separated by spaces: for a military-style unseparated string, use
-        `mgrs.as_string(Accuracy::One).replace(" ", "");`
-
-        ### Params
-         * **accuracy** Precision of returned grid reference (eg `One` = 1m or 10 digit grid,
-         `Ten` = 10m or 8 digit grid, etc.).
-
-        ### Returns
-         * This grid reference in standard format.
-
-        # Examples
-
-        ```
-        let mgrs_str = "31U DQ 48251 11932";
-        let mgrs = Mgrs::from(mgrs_str);
-        assert_eq!(mgrs_str, &*mgrs.as_string());
-        ```
-        */
-
-        self.as_string(accuracy)
-    }
-
 }
 
 impl From<Utm> for Mgrs {
@@ -183,5 +230,24 @@ impl FromStr for Mgrs {
 impl fmt::Display for Mgrs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", self.as_string(Accuracy::One))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use Accuracy;
+
+    #[test]
+    fn getting_accuracy() {
+        assert_eq!(mgrs::get_accuracy(25, 250), Accuracy::One);
+        assert_eq!(mgrs::get_accuracy(5, 25), Accuracy::One);
+        assert_eq!(mgrs::get_accuracy(256, 823), Accuracy::OneHundred);
+        assert_eq!(mgrs::get_accuracy(12345, 354), Accuracy::One);
+        assert_eq!(mgrs::get_accuracy(12000, 123), Accuracy::OneHundred);
+        assert_eq!(mgrs::get_accuracy(1200, 1000), Accuracy::OneThousand);
+        assert_eq!(mgrs::get_accuracy(10000, 1), Accuracy::One);
+        assert_eq!(mgrs::get_accuracy(10000, 20000), Accuracy::TenThousand);
+        assert_eq!(mgrs::get_accuracy(100, 1234), Accuracy::Ten);
     }
 }

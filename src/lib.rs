@@ -28,7 +28,7 @@ mod col;
 mod row;
 
 pub use errors::Errors;
-pub use letters::ZoneLetter;
+pub use band::LatBand;
 pub use gzd::Gzd;
 pub use utm::Utm;
 pub use mgrs::Mgrs;
@@ -36,6 +36,11 @@ pub use accuracy::Accuracy;
 pub use latlon::LatLon;
 
 pub type Lat = f64;
+impl From<LatBand> for Lat {
+    fn from(band: LatBand) -> Self {
+        (band.index()-10)*8
+    }
+}
 pub type Lon = f64;
 
 /// UTM zones are grouped, and assigned to one of a group of 6 sets

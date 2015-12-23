@@ -1,5 +1,5 @@
 use std::convert::From;
-use std::str;
+use std::str::{self, FromStr};
 use std::error::Error;
 
 use Lat;
@@ -64,7 +64,7 @@ impl LatBand {
          * **Err**: Returns `Errors::InvalidZoneLetter` if the `zone_letter` isn't valid
         */
 
-        use LatBand::{C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V, W, X};
+        use self::LatBand::{C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V, W, X};
 
         let northing = match *self {
             C => 1100000.0,
@@ -93,6 +93,14 @@ impl LatBand {
             return Ok(northing);
         }
         Err(Errors::InvalidLatBand(self.into()))
+    }
+
+    pub fn index(&self) -> usize {
+        match *self {
+            C => 0, D => 1, E => 2, F => 3, G => 4, H => 5, J => 6, K => 7, L => 8, M => 9,
+            N => 10, P => 11, Q => 12, R => 13, S => 14, T => 15, U => 16, V => 17, W => 18,
+            X => 19,
+        }
     }
 }
 
@@ -125,12 +133,13 @@ impl From<Lat> for LatBand {
 
 impl From<char> for LatBand {
     fn from(c: char) -> Self {
+        use self::LatBand::{C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V, W, X};
         match c {
             'C' | 'c' => C, 'D' | 'd' => D, 'E' | 'e' => E, 'F' | 'f' => F, 'G' | 'g' => G,
             'H' | 'h' => H, 'J' | 'j' => J, 'K' | 'k' => K, 'L' | 'l' => L, 'M' | 'm' => M,
             'N' | 'n' => N, 'P' | 'p' => P, 'Q' | 'q' => Q, 'R' | 'r' => R, 'S' | 's' => S,
             'T' | 't' => T, 'U' | 'u' => U, 'V' | 'v' => V, 'W' | 'w' => W, 'X' | 'x' => X,
-            _ => Err(Errors::InvalidLatBand(z as char))
+            _ => Err(Errors::InvalidLatBand(c as char))
         }
     }
 }
@@ -173,7 +182,7 @@ impl From<LatBand> for char {
 impl FromStr for LatBand {
     type Err = Errors;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use LatBand::{C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V, W, X};
+        use self::LatBand::{C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V, W, X};
         // Check first char, or fail (Z doesn't exist)
         let z = s.as_bytes()[0];
         match z {

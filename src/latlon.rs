@@ -4,7 +4,7 @@ use Utm;
 use Mgrs;
 use Accuracy;
 use Gzd;
-use ZoneLetter;
+use band::LatBand;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct LatLon {
@@ -55,7 +55,7 @@ impl LatLon {
         // We must know somehow if we are in the Northern or Southern hemisphere, this is the only
         // time we use the letter So even if the Zone letter isn't exactly correct it should indicate
         // the hemisphere correctly
-        if zone_letter < ZoneLetter::from('N') {
+        if zone_letter < LatBand::from('N') {
             // remove 10,000,000 meter offset used for southern hemisphere
             y -= 10000000.0;
         }

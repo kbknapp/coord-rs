@@ -5,8 +5,9 @@ use get_100k_set_for_zone;
 use latlon::LatLon;
 use Mgrs;
 use Accuracy;
-use ZoneLetter;
-use Datum;
+use band::LatBand;
+use datum::Datum;
+use hemisphere::Hemisphere;
 
 #[derive(Default, Copy, Clone, Debug)]
 pub struct Utm {
@@ -27,10 +28,10 @@ pub struct Utm {
 
 }
 
-impl<H, D> Utm
-    where H: Into<Hemisphere>,
-          D: Into<Datum> {
-    fn new(zone: u8, hemisphere: H, easting: i32, northing: i32) -> Self {
+impl Utm {
+    fn new<H, D>(zone: u8, hemisphere: H, easting: i32, northing: i32) -> Self 
+        where H: Into<Hemisphere>,
+              D: Into<Datum> {
         /*!
         Creates a `Utm` coordinate struct.
 
@@ -57,7 +58,7 @@ impl<H, D> Utm
         //if (!(120e3<=easting && easting<=880e3)) throw new Error('Invalid UTM easting '+ easting);
         //if (!(0<=northing && northing<=10000e3)) throw new Error('Invalid UTM northing '+ northing);
 
-        Umt {
+        Utm {
             zone: zone,
             hemisphere: hemisphere.into(),
             easting: easting,
@@ -154,7 +155,7 @@ impl<H, D> Utm
         Utm {
             n: utm_n.round(),
             e: utm_e.round(),
-            gzd: Gzd { num: zone_num as u8, letter: ZoneLetter::from(lat) }
+            gzd: Gzd { num: zone_num as u8, letter: LatBand::from(lat) }
         }
     }
 
@@ -208,23 +209,6 @@ impl<H, D> Utm
         */
 
         format!("{} {} {2:.4$} {3:.4$}", self.zone, self.hemisphere, self.easting, self.northing, digits)
-    }
-
-    fn to_string(self, digits: usize) -> String {
-        /*!
-        Returns a string representation of a UTM coordinate and consumed `self`
-
-        To distinguish from MGRS grid zone designators, a space is left between the zone and the
-        hemisphere.
-
-        ### Params
-         * **digits** Determines the number of digits to return after the decimal
-
-        ### Returns
-         * A string representation of the coordinate to the specified precision of `digits`.
-        */
-
-        self.as_string(digits)
     }
 }
 

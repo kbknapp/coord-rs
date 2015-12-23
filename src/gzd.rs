@@ -1,5 +1,7 @@
 use ascii;
-use letters::{ColLetter, RowLetter, BandLetter};
+use col::ColLetter;
+use row::RowLetter;
+use band::LatBand;
 use SET_ORIGIN_ROW_LETTERS;
 use SET_ORIGIN_COLUMN_LETTERS;
 
@@ -10,7 +12,7 @@ pub struct Gzd {
     /// 6° longitudinal zone (1..60 covering 180°W..180°E)
     pub zone: u8,
     /// 8° latitudinal band (C..X covering 80°S..84°N)
-    pub band: BandLetter,
+    pub band: LatBand,
 }
 
 /// 100k Grid Square ID such as FD

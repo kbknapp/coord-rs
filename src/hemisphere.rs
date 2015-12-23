@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use Errors;
+use band::LatBand;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Hemisphere {
@@ -46,6 +47,16 @@ impl<S: Into<String>> From<S> for Hemisphere {
     }
 }
 
+impl From<LatBand> for Hemisphere {
+    fn from(lb: LatBand) -> Self {
+        use band::LatBand::{N, P, Q, R, S, T, U, V, W, X};
+        match lb {
+            N | P | Q | R | S | T | U | V |  W | X => Hemisphere::N,
+            _ => Hemisphere::S,
+        }
+    }
+}
+
 impl FromStr for Hemisphere {
     type Err = Errors;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -61,6 +72,6 @@ impl FromStr for Hemisphere {
 impl From<Hemisphere> for char {
     fn from(h: Hemisphere) -> Self {
         use self::Hemisphere::{N, S};
-        match r { N => 'N', S => 'S', }
+        match h { N => 'N', S => 'S', }
     }
 }

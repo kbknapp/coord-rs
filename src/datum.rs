@@ -1,6 +1,8 @@
 use std::str::FromStr;
 use std::ascii::AsciiExt;
 
+use Errors;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Datum {
     Wgs84
@@ -28,7 +30,7 @@ impl<S: Into<String>> From<S> for Datum {
     }
 }
 
-impl FromStr for Hemisphere {
+impl FromStr for Datum {
     type Err = Errors;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let d = s.to_ascii_uppercase();

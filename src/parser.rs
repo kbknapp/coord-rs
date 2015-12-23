@@ -1,7 +1,8 @@
 use std::str;
 use get_100k_set_for_zone;
-use ZoneLetter;
-use letters::{ColLetter, RowLetter};
+use band::LatBand;
+use col::ColLetter;
+use row::RowLetter;
 
 use Accuracy;
 use Mgrs;
@@ -61,7 +62,7 @@ impl<'a> MgrsParser<'a> {
     fn zone_letter(&mut self, mgrs: &mut Mgrs) {
         self.pos += 1;
         let c = self.mgrs[self.pos] as char;
-        mgrs.utm.gzd.letter = ZoneLetter::from(c);
+        mgrs.utm.gzd.letter = LatBand::from(c);
     }
 
     fn col_letter(&mut self, mgrs: &mut Mgrs) {
