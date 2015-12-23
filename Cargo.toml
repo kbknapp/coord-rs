@@ -1,15 +1,15 @@
 [package]
 
-name = "mgrs"
+name = "coord"
 version = "0.1.0"
 authors = ["Kevin K. <kbknapp@gmail.com>"]
 exclude = ["tests/*", "benches/*", "*.png"]
-description = "a library for converting between Latitude / Longitude and MGRS"
-repository = "https://github.com/kbknapp/mgrs-rs.git"
-documentation = "http://kbknapp.github.io/mgrs-rs"
+description = "a library for converting between coordinate types of UTM, MGRS, and Latitude / Longitude"
+repository = "https://github.com/kbknapp/coord-rs.git"
+documentation = "http://kbknapp.github.io/coord-rs"
 readme = "README.md"
 license = "MIT"
-keywords = ["mgrs", "lat", "lon", "latitude", "longitude"]
+keywords = ["mgrs", "utm", "coordinate", "latitude", "longitude"]
 
 [dependencies]
 clippy    = { version = "~0.0.32", optional = true }

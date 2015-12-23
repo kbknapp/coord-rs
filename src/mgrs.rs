@@ -81,6 +81,70 @@ impl Mgrs {
     pub fn as_ll(&self) -> LatLon {
         LatLon::from(self.utm)
     }
+
+    as_string(&self, accuracy: Accuracy) -> String {
+        /*!
+        Returns a string representation of an MGRS grid reference.
+
+        To distinguish from civilian UTM coordinate representations, no space is included within
+        the zone/band grid zone designator. Single digit zones are padded with a leading `0`.
+
+        Components are separated by spaces: for a military-style unseparated string, use
+        `mgrs.as_string(Accuracy::One).replace(" ", "");`
+
+        ### Params
+         * **accuracy** Precision of returned grid reference (eg `One` = 1m or 10 digit grid,
+         `Ten` = 10m or 8 digit grid, etc.).
+
+        ### Returns
+         * This grid reference in standard format.
+
+        # Examples
+
+        ```
+        let mgrs_str = "31U DQ 48251 11932";
+        let mgrs = Mgrs::from(mgrs_str);
+        assert_eq!(mgrs_str, &*mgrs.as_string());
+        ```
+        */
+
+        let digits = (accuracy.as_num_digits() / 2);
+        // set required precision
+        let easting = (f64::floor(self.easting / f64::powi(10, 5 - digits))) as usize;
+        let northing = (f64::floor(self.northing / f64::powi(10, 5 - digits))) as usize;
+
+        format!("{0:02}{} {}{} {4:0<6$} {5:0<6$}", self.gzd.zone, self.gzd.band, , self.gsid_100k.col, self.gsid_100k.row, ,easting, northing, digits)
+    }
+
+    to_string(&self, accuracy: Accuracy) -> String {
+        /*!
+        Returns a string representation of an MGRS grid reference and consumes `self`.
+
+        To distinguish from civilian UTM coordinate representations, no space is included within
+        the zone/band grid zone designator. Single digit zones are padded with a leading `0`.
+
+        Components are separated by spaces: for a military-style unseparated string, use
+        `mgrs.as_string(Accuracy::One).replace(" ", "");`
+
+        ### Params
+         * **accuracy** Precision of returned grid reference (eg `One` = 1m or 10 digit grid,
+         `Ten` = 10m or 8 digit grid, etc.).
+
+        ### Returns
+         * This grid reference in standard format.
+
+        # Examples
+
+        ```
+        let mgrs_str = "31U DQ 48251 11932";
+        let mgrs = Mgrs::from(mgrs_str);
+        assert_eq!(mgrs_str, &*mgrs.as_string());
+        ```
+        */
+
+        self.as_string(accuracy)
+    }
+
 }
 
 impl From<Utm> for Mgrs {
@@ -113,5 +177,11 @@ impl FromStr for Mgrs {
     ///     zone_num and accuracy (in meters) properties.
     fn from_str(mgrs: &str) -> Result<Self, Self::Err> {
         Ok(MgrsParser::new(mgrs.as_bytes()).parse())
+    }
+}
+
+impl fmt::Display for Mgrs {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{}", self.as_string(Accuracy::One))
     }
 }

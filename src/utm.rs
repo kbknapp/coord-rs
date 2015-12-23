@@ -1,3 +1,5 @@
+use std::fmt;
+
 use gzd::{Gzd, GridSquareId100k};
 use get_100k_set_for_zone;
 use latlon::LatLon;
@@ -190,10 +192,50 @@ impl<H, D> Utm
         let set_row = (f64::floor(self.n / 100000.0) % 20.0) as u32;
         GridSquareId100k::new(set_column, set_row, set_parm)
     }
+
+    fn as_string(&self, digits: usize) -> String {
+        /*!
+        Returns a string representation of a UTM coordinate.
+
+        To distinguish from MGRS grid zone designators, a space is left between the zone and the
+        hemisphere.
+
+        ### Params
+         * **digits** Determines the number of digits to return after the decimal
+
+        ### Returns
+         * A string representation of the coordinate to the specified precision of `digits`.
+        */
+
+        format!("{} {} {2:.4$} {3:.4$}", self.zone, self.hemisphere, self.easting, self.northing, digits)
+    }
+
+    fn to_string(self, digits: usize) -> String {
+        /*!
+        Returns a string representation of a UTM coordinate and consumed `self`
+
+        To distinguish from MGRS grid zone designators, a space is left between the zone and the
+        hemisphere.
+
+        ### Params
+         * **digits** Determines the number of digits to return after the decimal
+
+        ### Returns
+         * A string representation of the coordinate to the specified precision of `digits`.
+        */
+
+        self.as_string(digits)
+    }
 }
 
 impl From<LatLon> for Utm {
     fn from(ll: LatLon) -> Self {
         Utm::from_ll(&ll)
+    }
+}
+
+impl fmt::Display for Utm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{}", self.as_string(5))
     }
 }

@@ -261,26 +261,6 @@ Utm.parse = function(utmCoord, datum) {
 };
 
 
-/**
- * Returns a string representation of a UTM coordinate.
- *
- * To distinguish from MGRS grid zone designators, a space is left between the zone and the
- * hemisphere.
- *
- * @param   {number} [digits=0] - Number of digits to appear after the decimal point (3 ≡ mm).
- * @returns {string} A string representation of the coordinate.
- */
-Utm.prototype.toString = function(digits) {
-    digits = Number(digits||0); // default 0 if not supplied
-
-    var z = this.zone;
-    var h = this.hemisphere;
-    var e = this.easting;
-    var n = this.northing;
-    if (isNaN(z) || !h.match(/[NS]/) || isNaN(e) || isNaN(n)) return '';
-
-    return z+' '+h+' '+e.toFixed(digits)+' '+n.toFixed(digits);
-};
 
 /** Extend Number object with method to pad with leading zeros to make it w chars wide
  *  (q.v. stackoverflow.com/questions/2998784 */
@@ -436,40 +416,4 @@ Mgrs.parse(mgrsGridRef) {
     n = n.length>=5 ?  n : (n+'00000').slice(0, 5);
 
     return new Mgrs(zone, band, e100k, n100k, e, n);
-};
-
-
-/**
- * Returns a string representation of an MGRS grid reference.
- *
- * To distinguish from civilian UTM coordinate representations, no space is included within the
- * zone/band grid zone designator.
- *
- * Components are separated by spaces: for a military-style unseparated string, use
- * Mgrs.toString().replace(/ /g, '');
- *
- * @param   {number} [digits=10] - Precision of returned grid reference (eg 4 = km, 10 = m).
- * @returns {string} This grid reference in standard format.
- *
- * @example
- *   var mgrsStr = Mgrs(31, 'U', 'D', 'Q', 48251, 11932).toString(); // mgrsStr: '31U DQ 48251 11932'
- */
-Mgrs.toString(digits) {
-    digits = (digits === undefined) ? 10 : Number(digits);
-
-    var zone = this.zone.pad(2); // ensure leading zero
-    var band = this.band;
-
-    var e100k = this.e100k;
-    var n100k = this.n100k;
-
-    // set required precision
-    var easting = Math.floor(this.easting/Math.pow(10, 5-digits/2));
-    var northing = Math.floor(this.northing/Math.pow(10, 5-digits/2));
-
-    // ensure leading zeros
-    easting = easting.pad(digits/2);
-    northing = northing.pad(digits/2);
-
-    return zone+band + ' ' + e100k+n100k + ' '  + easting + ' ' + northing;
 };
