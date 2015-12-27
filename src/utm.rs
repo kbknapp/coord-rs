@@ -177,19 +177,18 @@ impl Utm {
 
         let n100k = RowLetter::from_zone_and_northing(self.zone, self.northing);
 
-        // convert UTM to lat/long to get latitude to determine band
-        let ll = self.as_ll_e();
-
         // truncate easting/northing to within 100km grid square and round to nm precision
-        // (10^6=1,000,000)
-        let easting = (((self.easting % 100000) * 1000000.0).round()) / 1000000.0;
-        let northing = (((self.northing % 100000) * 1000000.0).round()) / 1000000.0;
+        // round to reasonable precision
+        let to_precision = |x: i32, y: u32| -> usize {
+            let p = i32::pow(10, y);
+            (((x % p) * p) / p) as usize
+        };
 
         Mgrs {
-            gzd: Gzd { zone: self.zone, band: LatBand::from_lat(ll.lat) },
+            gzd: Gzd { zone: self.zone, band: LatBand::from_lat(self.as_ll_e().lat) },
             gsid_100k: GridSquareId100k { col: e100k, row: n100k },
-            easting: self.easting,
-            northing: self.northing,
+            easting: to_precision(self.easting, 6),
+            northing: to_precision(self.northing, 6),
         }
     }
 
@@ -207,8 +206,8 @@ impl Utm {
         */
         use std::f64;
         let set_parm = get_100k_set_for_zone(self.gzd.num as usize);
-        let set_column = f64::floor(self.e / 100000.0) as u32;
-        let set_row = (f64::floor(self.n / 100000.0) % 20.0) as u32;
+        let set_column = f64::floor(self.easting / 100000.0) as u32;
+        let set_row = (f64::floor(self.northing / 100000.0) % 20.0) as u32;
         GridSquareId100k::new(set_column, set_row, set_parm)
     }
 

@@ -2,7 +2,6 @@ use std::convert::From;
 use std::str::{self, FromStr};
 use std::error::Error;
 
-use Lat;
 use Errors;
 
 #[derive(PartialEq, PartialOrd, Debug, Copy, Clone)]
@@ -12,7 +11,7 @@ pub enum LatBand {
 }
 
 impl LatBand {
-    pub fn from_lat(l: Lat) -> Option<Self> {
+    pub fn from_lat(l: f64) -> Option<Self> {
         /*!
         Calculates the MGRS letter designator for the given latitude.
 
@@ -50,9 +49,9 @@ impl LatBand {
 
     }
 
-    fn alt_from_lat(l: Lat) -> Self {
-        LatBand::index(f64::floor((l / 8.0) + 10.0))
-    }
+    // fn alt_from_lat(l: f64) -> Self {
+    //     LatBand::index(f64::floor((l / 8.0) + 10.0))
+    // }
 
     pub fn get_min_northing(&self) -> Result<f64, Errors> {
         /*!
@@ -97,7 +96,7 @@ impl LatBand {
         if northing >= 0.0 {
             return Ok(northing);
         }
-        Err(Errors::InvalidLatBand(self.into()))
+        Err(Errors::InvalidLatitudeBand(self.as_char()))
     }
 
     pub fn index(&self) -> usize {
@@ -107,14 +106,24 @@ impl LatBand {
             X => 19,
         }
     }
+
+    pub fn as_char(&self) -> char {
+        use self::LatBand::{C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V, W, X};
+        match *self {
+            C => 'C', D => 'D', E => 'E', F => 'F', G => 'G', H => 'H',
+            J => 'J', K => 'K', L => 'L', M => 'L', N => 'N', P => 'P',
+            Q => 'Q', R => 'R', S => 'S', T => 'T', U => 'U', V => 'V',
+            W => 'W', X => 'X'
+        }
+    }
 }
 
 ///////////////////////////////////////////////////
 //////////////// impls ////////////////////////////
 ///////////////////////////////////////////////////
 
-impl From<Lat> for LatBand {
-    fn from(lat: Lat) -> Self {
+impl From<f64> for LatBand {
+    fn from(lat: f64) -> Self {
         /*!
         Calculates the MGRS letter designator for the given latitude.
 
@@ -144,7 +153,7 @@ impl From<char> for LatBand {
             'H' | 'h' => H, 'J' | 'j' => J, 'K' | 'k' => K, 'L' | 'l' => L, 'M' | 'm' => M,
             'N' | 'n' => N, 'P' | 'p' => P, 'Q' | 'q' => Q, 'R' | 'r' => R, 'S' | 's' => S,
             'T' | 't' => T, 'U' | 'u' => U, 'V' | 'v' => V, 'W' | 'w' => W, 'X' | 'x' => X,
-            _ => Err(Errors::InvalidLatBand(c as char))
+            _ => panic!("invalid latitude band letter {}", c), 
         }
     }
 }
@@ -161,17 +170,17 @@ impl From<u8> for LatBand {
     }
 }
 
-impl<S: AsRef<str>> From<S> for LatBand {
-    fn from(s: S) -> Self {
-        LatBand::from(s.as_ref()).expect("Invalid latitudinal band character")
+impl<'s> From<&'s str> for LatBand {
+    fn from(s: &'s str) -> Self {
+        LatBand::from(s)
     }
 }
 
-impl<S: Into<String>> From<S> for LatBand {
-    fn from(s: S) -> Self {
-        LatBand::from(&*s.into()).expect("Invalid latitudinal band character")
-    }
-}
+// impl<S: Into<String>> From<S> for LatBand {
+//     fn from(s: S) -> Self {
+//         LatBand::from(&*s.into()).expect("Invalid latitudinal band character")
+//     }
+// }
 
 impl From<LatBand> for char {
     fn from(r: LatBand) -> Self {
@@ -196,7 +205,7 @@ impl FromStr for LatBand {
             b'L' | b'l' => Ok(L), b'M' | b'm' => Ok(M), b'N' | b'n' => Ok(N), b'P' | b'p' => Ok(P),
             b'Q' | b'q' => Ok(Q), b'R' | b'r' => Ok(R), b'S' | b's' => Ok(S), b'T' | b't' => Ok(T),
             b'U' | b'u' => Ok(U), b'V' | b'v' => Ok(V), b'W' | b'w' => Ok(W), b'X' | b'x' => Ok(X),
-            _ => Err(Errors::InvalidLatBand(z as char))
+            _ => Err(Errors::InvalidLatitudeBand(z as char))
         }
     }
 }

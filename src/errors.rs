@@ -1,13 +1,17 @@
 use std::error::Error;
 use std::fmt;
+use Lat;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum Errors {
     InvalidZoneLetter(char),
     InvalidRowLetter(char),
     InvalidColLetter(char),
     InvalidNorthingChar(char),
     InvalidEastingChar(char),
+    InvalidLatitude(Lat),
+    InvalidLatitudeBand(char),
+    InvalidDatum(String),
 }
 
 impl fmt::Display for Errors {
@@ -22,8 +26,11 @@ impl Error for Errors {
             Errors::InvalidZoneLetter(..)   => "invalid zone letter",
             Errors::InvalidColLetter(..)   => "invalid column letter",
             Errors::InvalidRowLetter(..)   => "invalid row letter",
-            Errors::InvalidNorthingChar(..) => "MGRS Point given invalid Northing",
-            Errors::InvalidEastingChar(..) => "MGRS Point given invalid Easting",
+            Errors::InvalidNorthingChar(..) => "MGRS point given invalid northing",
+            Errors::InvalidEastingChar(..) => "MGRS point given invalid easting",
+            Errors::InvalidLatitude(..) => "latitude outside UTM limits",
+            Errors::InvalidLatitudeBand(..) => "invalid Latitude band letter",
+            Errors::InvalidDatum(..) => "invalid map datum was supplied",
         }
     }
 

@@ -13,6 +13,12 @@ pub enum Hemisphere {
 ///////////// impls ///////////////
 ///////////////////////////////////
 
+impl Default for Hemisphere {
+    fn default() -> Self {
+        Hemisphere::N
+    }
+}
+
 impl From<char> for Hemisphere {
     fn from(c: char) -> Self {
         match c {
@@ -35,17 +41,17 @@ impl From<u8> for Hemisphere {
     }
 }
 
-impl<S: AsRef<str>> From<S> for Hemisphere {
-    fn from(s: S) -> Self {
+impl<'s> From<&'s str> for Hemisphere {
+    fn from(s: &'s str) -> Self {
         Hemisphere::from(s.as_ref()).expect("Invalid Hemisphere character")
     }
 }
 
-impl<S: Into<String>> From<S> for Hemisphere {
-    fn from(s: S) -> Self {
-        Hemisphere::from(&*s.into()).expect("Invalid Hemisphere character")
-    }
-}
+// impl<S: Into<String>> From<S> for Hemisphere {
+//     fn from(s: S) -> Self {
+//         Hemisphere::from(&*s.into()).expect("Invalid Hemisphere character")
+//     }
+// }
 
 impl From<LatBand> for Hemisphere {
     fn from(lb: LatBand) -> Self {
