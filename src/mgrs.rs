@@ -196,11 +196,7 @@ impl Mgrs {
 
 impl From<Utm> for Mgrs {
     fn from(utm: Utm) -> Self {
-        Mgrs {
-            gsid_100k: utm.get_100k_id(),
-            utm: utm,
-            accuracy: Accuracy::One,
-        }
+        utm.to_mgrs(None)
     }
 }
 

@@ -8,6 +8,8 @@ use Accuracy;
 use band::LatBand;
 use datum::Datum;
 use hemisphere::Hemisphere;
+use col::ColLetter;
+use row::RowLetter;
 
 #[derive(Default, Copy, Clone, Debug)]
 pub struct Utm {
@@ -29,7 +31,7 @@ pub struct Utm {
 }
 
 impl Utm {
-    fn new<H, D>(zone: u8, hemisphere: H, easting: i32, northing: i32) -> Self 
+    fn new<H, D>(zone: u8, hemisphere: H, easting: i32, northing: i32) -> Self
         where H: Into<Hemisphere>,
               D: Into<Datum> {
         /*!
@@ -161,17 +163,33 @@ impl Utm {
 
     pub fn to_mgrs(self, accuracy: Option<Accuracy>) -> Mgrs {
         /*!
-        Converts a UTM location to an MGRS struct and consumes itself.
+        Converts UTM coordinate to MGRS reference.
 
-        ### Params
-         * **accuracy**: `Accuracy` enum.
-        ### Return
-         * `Mgrs` struct for the given UTM location.
+         @returns {Mgrs}
+         @throws  {Error} Invalid coordinate
+
+         @example
+           var utmCoord = new Utm(31, 'N', 448251, 5411932);
+           var mgrsRef = utmCoord.toMgrs(); // mgrsRef.toString() = '31U DQ 48251 11932'
         */
+
+        let e100k = ColLetter::from_zone_and_easting(self.zone, self.easting);
+
+        let n100k = RowLetter::from_zone_and_northing(self.zone, self.northing);
+
+        // convert UTM to lat/long to get latitude to determine band
+        let ll = self.as_ll_e();
+
+        // truncate easting/northing to within 100km grid square and round to nm precision
+        // (10^6=1,000,000)
+        let easting = (((self.easting % 100000) * 1000000.0).round()) / 1000000.0;
+        let northing = (((self.northing % 100000) * 1000000.0).round()) / 1000000.0;
+
         Mgrs {
-            gsid_100k: self.get_100k_id(),
-            utm: self,
-            accuracy: accuracy.unwrap_or(Accuracy::One)
+            gzd: Gzd { zone: self.zone, band: LatBand::from_lat(ll.lat) },
+            gsid_100k: GridSquareId100k { col: e100k, row: n100k },
+            easting: self.easting,
+            northing: self.northing,
         }
     }
 

@@ -47,6 +47,11 @@ impl LatBand {
             l if ((-72 > l) && (l >= -80)) => Some(C),
             _ => None,
         }
+
+    }
+
+    fn alt_from_lat(l: Lat) -> Self {
+        LatBand::index(f64::floor((l / 8.0) + 10.0))
     }
 
     pub fn get_min_northing(&self) -> Result<f64, Errors> {

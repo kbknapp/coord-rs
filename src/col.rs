@@ -18,20 +18,58 @@ impl ColLetter {
         self.index_from_set((zone-1)%3) * 100000
     }
 
-    fn index_from_set(&self, set: u8) -> usize {
+    pub fn index_for_easting(easting: i32) -> u8 {
+        (f64::floor(easting / 100000) as u8) - 1
+    }
+
+    pub fn letter_at(zone: u8, index: u8) -> Self {
+        ColLetter::from_set_and_index((zone - 1) % 3, index)
+    }
+
+    pub fn from_zone_and_easting(zone: u8, easting: i32) -> Self {
+        ColLetter::letter_at(zone, ColLetter::index_for_easting(easting))
+    }
+
+    pub fn index_from_set(&self, set: u8) -> usize {
         use self::ColLetter::{A, B, C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V, W, X, Y, Z};
         match set {
-            1 => match *self {
+            0 => match *self {
                 A => 0, B => 1, C => 2, D => 3, E => 4, F => 5, G => 6, H => 7,
                 _ => panic!("Invalid e100k letter for set 1")
             },
-            2 => match *self {
+            1 => match *self {
                 J => 0, K => 1, L => 2, M => 3, N => 4, P => 5, Q => 6, R => 7,
                 _ => panic!("Invalid e100k letter for set 2")
             },
-            3 => match *self {
+            2 => match *self {
                 S => 0, T => 1, U => 2, V => 3, W => 4, X => 5, Y => 6, Z => 7,
                 _ => panic!("Invalid e100k letter for set 3")
+            },
+            _ => panic!("Invalid e100k set"),
+        }
+    }
+
+    pub fn from_set_and_index(set: u8, index: u8) -> Self {
+        use self::ColLetter::{A, B, C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V, W, X, Y, Z};
+        // columns in zone 1 are A-H, zone 2 J-R, zone 3 S-Z, then repeating every 3rd zone
+        match set {
+            0 => {
+                match index {
+                    0 => A, 1 => B, 2 => C, 3 => D, 4 => E, 5 => F, 6 => G, 7 => H,
+                    _ => panic!("Invalid e100k letter for set 1")
+                }
+            },
+            1 => {
+                match index {
+                    0 => J, 1 => K, 2 => L, 3 => M, 4 => N, 5 => P, 6 => Q, 7 => R,
+                    _ => panic!("Invalid e100k letter for set 2")
+                }
+            },
+            2 => {
+                match index {
+                    0 => S, 1 => T, 2 => U, 3 => V, 4 => W, 5 => X, 6 => Y, 7 => Z,
+                    _ => panic!("Invalid e100k letter for set 3")
+                }
             },
             _ => panic!("Invalid e100k set"),
         }

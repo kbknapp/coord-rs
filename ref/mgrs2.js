@@ -270,45 +270,6 @@ if (Number.prototype.pad === undefined) {
     };
 }
 
-/**
- * Converts UTM coordinate to MGRS reference.
- *
- * @returns {Mgrs}
- * @throws  {Error} Invalid coordinate
- *
- * @example
- *   var utmCoord = new Utm(31, 'N', 448251, 5411932);
- *   var mgrsRef = utmCoord.toMgrs(); // mgrsRef.toString() = '31U DQ 48251 11932'
- */
-Utm.toMgrs() {
-    if (isNaN(this.zone + this.easting + this.northing)) throw new Error('Invalid UTM coordinate');
-
-    // MGRS zone is same as UTM zone
-    var zone = this.zone;
-
-    // convert UTM to lat/long to get latitude to determine band
-    var latlong = this.toLatLonE();
-    // grid zones are 8° tall, 0°N is 10th band
-    var band = Mgrs.latBands.charAt(Math.floor(latlong.lat/8+10)); // latitude band
-
-    // columns in zone 1 are A-H, zone 2 J-R, zone 3 S-Z, then repeating every 3rd zone
-    var col = Math.floor(this.easting / 100000);
-    var e100k = Mgrs.e100kLetters[(zone-1)%3].charAt(col-1); // TODO: why col-1?
-
-    // rows in even zones are A-V, in odd zones are F-E
-    var row = Math.floor(this.northing / 100000) % 20;
-    var n100k = Mgrs.n100kLetters[(zone-1)%2].charAt(row);
-
-    // truncate easting/northing to within 100km grid square
-    var easting = this.easting % 100000;
-    var northing = this.northing % 100000;
-
-    // round to nm precision
-    easting = Number(easting.toFixed(6));
-    northing = Number(northing.toFixed(6));
-
-    return new Mgrs(zone, band, e100k, n100k, easting, northing);
-};
 
 
 
