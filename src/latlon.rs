@@ -26,228 +26,96 @@ impl LatLon {
         })
     }
 
-    pub fn to_utm(self) -> Utm {
-        /*!
-        Converts latitude/longitude to UTM coordinate.
+    // pub fn from_utm(utm: &Utm) -> Option<Self> {
+    //     /*!
+    //     Converts UTM coords to lat/lon, using the WGS84 ellipsoid. This is a convenience
+    //     class where the Zone can be specified as a single string eg."60N" which
+    //     is then broken down into the zone_num and ZoneLetter.
+    //
+    //     ### Params
+    //      * **utm**: `Utm` struct If an optional accuracy property is
+    //         provided (in meters), a bounding box will be returned instead of
+    //         latitude and lonitude.
+    //     ### Return
+    //      * `LatLon` containing either lat and lon values
+    //         (if no accuracy was provided), or top, right, bottom and left values
+    //         for the bounding box calculated according to the provided accuracy. Returns `None` if
+    //         if the conversion fails.
+    //     */
+    //
+    //
+    //     let utm_n= utm.n;
+    //     let utm_e= utm.e;
+    //     let zone_letter = utm.gzd.letter;
+    //     let zone_num = utm.gzd.num;
+    //
+    //     let k0 = 0.9996;
+    //     let a = 6378137.0; //ellip.radius;
+    //     let ecc_sq = 0.00669438; //ellip.eccsq;
+    //     let e1 = (1.0 - f64::sqrt(1.0 - ecc_sq)) / (1.0 + f64::sqrt(1.0 - ecc_sq));
+    //
+    //     // remove 500,000 meter offset for lonitude
+    //     let x = utm_e - 500000.0;
+    //     let mut y = utm_n;
+    //
+    //     // We must know somehow if we are in the Northern or Southern hemisphere, this is the only
+    //     // time we use the letter So even if the Zone letter isn't exactly correct it should indicate
+    //     // the hemisphere correctly
+    //     if zone_letter < LatBand::from('N') {
+    //         // remove 10,000,000 meter offset used for southern hemisphere
+    //         y -= 10000000.0;
+    //     }
+    //
+    //   // There are 60 zones with zone 1 being at West -180 to -174
+    //   let lon_origin = ((zone_num - 1) * 6 - 180 + 3) as f64; // +3 puts origin in middle of zone
+    //
+    //   let ecc_prm_sq = (ecc_sq) / (1.0 - ecc_sq);
+    //
+    //   let m = y / k0;
+    //   let mu = m /
+    //     (a *
+    //         (1.0 - ecc_sq / 4.0 - 3.0 * ecc_sq * ecc_sq / 64.0 - 5.0 * ecc_sq * ecc_sq * ecc_sq / 256.0));
+    //
+    //   let phi1_rad = mu +
+    //     (3.0 * e1 / 2.0 - 27.0 * e1 * e1 * e1 / 32.0) *
+    //     f64::sin(2.0 * mu) +
+    //     (21.0 * e1 * e1 / 16.0 - 55.0 * e1 * e1 * e1 * e1 / 32.0) *
+    //     f64::sin(4.0 * mu) +
+    //     (151.0 * e1 * e1 * e1 / 96.0) *
+    //     f64::sin(6.0 * mu);
+    //   // double phi1 = ProjradToDeg(phi1_rad);
+    //
+    //   let n1 = a / f64::sqrt(1.0 - ecc_sq * phi1_rad.sin() * phi1_rad.sin());
+    //   let t1 = phi1_rad.tan() * phi1_rad.tan();
+    //   let c1 = ecc_prm_sq * phi1_rad.cos() * phi1_rad.cos();
+    //   let r1 = a * (1.0 - ecc_sq) / f64::powf(1.0 - ecc_sq * phi1_rad.sin() * phi1_rad.sin(), 1.5);
+    //   let d = x / (n1 * k0);
+    //
+    //   let mut lat = phi1_rad -
+    //     (n1 * phi1_rad.tan() / r1) *
+    //     (d * d / 2.0 -
+    //         (5.0 + 3.0 * t1 + 10.0 * c1 - 4.0 * c1 * c1 - 9.0 * ecc_prm_sq) *
+    //         d * d * d * d / 24.0 +
+    //         (61.0 + 90.0 * t1 + 298.0 * c1 + 45.0 * t1 * t1 - 252.0 * ecc_prm_sq - 3.0 * c1 * c1) *
+    //         d * d * d * d * d * d / 720.0);
+    //   lat = lat.to_degrees();
+    //
+    //   let mut lon = (d -
+    //       (1.0 + 2.0 * t1 + c1) *
+    //       d * d * d / 6.0 +
+    //       (5.0 - 2.0 * c1 + 28.0 * t1 - 3.0 * c1 * c1 + 8.0 * ecc_prm_sq + 24.0 * t1 * t1) *
+    //       d * d * d * d * d / 120.0) /
+    //       phi1_rad.cos();
+    //
+    //   lon = lon_origin + lon.to_degrees();
+    //
+    //     Some(LatLon {
+    //         lat: lat,
+    //         lon: lon
+    //     })
+    // }
 
-        Implements Karney’s method, using Krüger series to order n^6, giving results accurate to 5nm for
-        distances up to 3900km from the central meridian.
-
-        @returns {Utm}   UTM coordinate.
-        @throws  {Error} If point not valid, if point outside latitude range.
-
-        @example
-          var latlong = new LatLon(48.8582, 2.2945, LatLon.datum.WGS84);
-          var utmCoord = latlong.toUtm(); // utmCoord.toString(): '31 N 448252 5411933'
-        */
-
-        let false_easting = 500e3;
-        let false_northing = 10000e3;
-
-        let mut zone = (f64::floor((self.lon + 180.0) / 6.0) + 1.0) as u8; // longitudinal zone
-        let mut lamda0 = f64::to_radians(((zone - 1) * 6 - 180 + 3) as f64); // longitude of central meridian
-
-        // ---- handle Norway/Svalbard exceptions
-        // grid zones are 8° tall; 0°N is offset 10 into latitude bands array
-        let mgrs_lat_bands = b"CDEFGHJKLMNPQRSTUVWXX"; // X is repeated for 80-84°N
-        let lat_band = mgrs_lat_bands[f64::floor(self.lat / 8.0 + 10.0) as usize];
-
-        // adjust zone & central meridian for Norway
-        if zone == 31 && lat_band == b'V' && self.lon >= 3.0 { zone += 1; lamda0 += f64::to_radians(6.0); }
-        // adjust zone & central meridian for Svalbard
-        if (zone == 32 && lat_band == b'X' && self.lon <  9.0)  { zone -= 1; lamda0 -= f64::to_radians(6.0); }
-        if (zone == 32 && lat_band == b'X' && self.lon >= 9.0)  { zone += 1; lamda0 += f64::to_radians(6.0); }
-        if (zone == 34 && lat_band == b'X' && self.lon <  21.0) { zone -= 1; lamda0 -= f64::to_radians(6.0); }
-        if (zone == 34 && lat_band == b'X' && self.lon >= 21.0) { zone += 1; lamda0 += f64::to_radians(6.0); }
-        if (zone == 36 && lat_band == b'X' && self.lon <  33.0) { zone -= 1; lamda0 -= f64::to_radians(6.0); }
-        if (zone == 36 && lat_band == b'X' && self.lon >= 33.0) { zone += 1; lamda0 += f64::to_radians(6.0); }
-
-        let phi = f64::to_radians(self.lat);      // latitude ± from equator
-        let lamda = f64::to_radians(self.lon) - lamda0; // longitude ± from central meridian
-
-        // WGS 84: a = 6378137, b = 6356752.314245, f = 1/298.257223563;
-        let a = Datum::Wgs84.a();
-        let f = Datum::Wgs84.f();
-
-        let k0 = 0.9996; // UTM scale on the central meridian
-
-        // ---- easting, northing: Karney 2011 Eq 7-14, 29, 35:
-
-        let e = f64::sqrt(f * (2.0 - f)); // eccentricity
-        let n = f / (2.0 - f);        // 3rd flattening
-        let n2 = n * n;
-        let n3 = n * n2;
-        let n4 = n * n3;
-        let n5 = n * n4;
-        let n6 = n * n5; // TODO: compare Horner-form accuracy?
-
-        let coslamda = lamda.cos();
-        let sinlamda = lamda.sin();
-        let tanlamda = lamda.tan();
-
-        // tau ≡ tanphi, tau2 ≡ tanphi2; prime (2) indicates angles on the conformal sphere
-        let tau = phi.tan();
-        let delta = f64::sinh(e * f64::atanh(e * tau / f64::sqrt( 1.0 + tau * tau)));
-
-        let tau2 = tau * f64::sqrt( 1.0 + delta * delta) - delta * f64::sqrt( 1.0 + tau * tau);
-
-        let xi = f64::atan2(tau2, coslamda);
-        let eta = f64::asinh(sinlamda / f64::sqrt(tau2 * tau2 + coslamda * coslamda));
-
-        // 2πA is the circumference of a meridian
-        let A = a / (1.0 + n) * (1.0 + 1.0 / 4.0 * n2 + 1.0 / 64.0 * n4 + 1.0 / 256.0 * n6);
-
-        // note alpha is one-based array (6th order Krüger expressions)
-        let alpha = [ 0.0,
-            1.0 / 2.0 *n - 2.0 / 3.0 * n2 + 5.0 / 16.0 * n3 + 41.0 / 180.0 * n4 - 127.0 / 288.0 * n5 + 7891.0 / 37800.0 * n6,
-            13.0 / 48.0 * n2 - 3.0 / 5.0 * n3 + 557.0 / 1440.0 * n4 + 281.0 / 630.0 * n5 - 1983433.0 / 1935360.0 * n6,
-            61.0 / 240.0 * n3 - 103.0 / 140.0 * n4 + 15061.0 / 26880.0 * n5 + 167603.0 / 181440.0 * n6,
-            49561.0 / 161280.0 * n4 - 179.0 / 168.0 * n5 + 6601661.0 / 7257600.0 * n6,
-            34729.0 / 80640.0 * n5 - 3418889.0 / 1995840.0 * n6,
-            212378941.0 / 319334400.0 * n6 ];
-
-        let xi2 = xi;
-        for j in 1..6 { xi += alpha[j] * f64::sin(2.0 * j as f64 * xi2) * f64::cosh(2.0 * j as f64 * eta); }
-
-        let eta2 = eta;
-        for j in 1..6 { eta += alpha[j] * f64::cos(2.0 * j as f64 * xi2) * f64::sinh(2.0 * j as f64 *eta2); }
-
-        let x = k0 * A * eta;
-        let y = k0 * A * xi;
-
-        // ---- convergence: Karney 2011 Eq 23, 24
-
-        let p2 = 1.0;
-        for j in 1..6 { p2 += 2.0 * j as f64 * alpha[j] * f64::cos( 2.0 * j as f64 * xi2) * f64::cosh(2.0 * j as f64 * eta2); }
-        let q2 = 0.0;
-        for j in 1..6 { q2 += 2.0 * j as f64 * alpha[j] * f64::sin(2.0 * j as f64 * xi2) * f64::sinh(2.0 * j as f64 * eta2); }
-
-        let gamma2 = f64::atan(tau2 / f64::sqrt(1.0 + tau2 * tau2) * tanlamda);
-        let gamma3 = q2.atan2(p2);
-
-        let gamma = gamma2 + gamma3;
-
-        // ---- scale: Karney 2011 Eq 25
-
-        let sinphi = phi.sin();
-        let k2 = f64::sqrt(1.0 - e * e * sinphi * sinphi) * f64::sqrt(1.0 + tau * tau) / f64::sqrt(tau2 * tau2 + coslamda * coslamda);
-        let k3 = A / a * f64::sqrt(p2 * p2 + q2 * q2);
-
-        let k = k0 * k2 * k3;
-
-        // ------------
-
-        // shift x/y to false origins
-        x = x + false_easting;             // make x relative to false easting
-        if y < 0.0 { y = y + false_northing; } // make y in southern hemisphere relative to false northing
-
-        // round to reasonable precision
-        let to_precision = |x: i32, y: u32| -> i32 {
-            let p = i32::pow(10, y);
-            (f64::round((x * p) as f64) / p as f64) as i32
-        };
-
-        Utm {
-            zone: zone,
-            hemisphere: Hemisphere::from(self.lat),
-            easting: to_precision(x % 100000, 6), // nm precision,
-            northing: to_precision(y % 100000, 6),
-            datum: self.datum,
-            convergence: to_precision(gamma.to_degrees(), 9),
-            scale: to_precision(k, 12),
-        }
-    }
-
-    pub fn from_utm(utm: &Utm) -> Option<Self> {
-        /*!
-        Converts UTM coords to lat/lon, using the WGS84 ellipsoid. This is a convenience
-        class where the Zone can be specified as a single string eg."60N" which
-        is then broken down into the zone_num and ZoneLetter.
-
-        ### Params
-         * **utm**: `Utm` struct If an optional accuracy property is
-            provided (in meters), a bounding box will be returned instead of
-            latitude and lonitude.
-        ### Return
-         * `LatLon` containing either lat and lon values
-            (if no accuracy was provided), or top, right, bottom and left values
-            for the bounding box calculated according to the provided accuracy. Returns `None` if
-            if the conversion fails.
-        */
-
-
-        let utm_n= utm.n;
-        let utm_e= utm.e;
-        let zone_letter = utm.gzd.letter;
-        let zone_num = utm.gzd.num;
-
-        let k0 = 0.9996;
-        let a = 6378137.0; //ellip.radius;
-        let ecc_sq = 0.00669438; //ellip.eccsq;
-        let e1 = (1.0 - f64::sqrt(1.0 - ecc_sq)) / (1.0 + f64::sqrt(1.0 - ecc_sq));
-
-        // remove 500,000 meter offset for lonitude
-        let x = utm_e - 500000.0;
-        let mut y = utm_n;
-
-        // We must know somehow if we are in the Northern or Southern hemisphere, this is the only
-        // time we use the letter So even if the Zone letter isn't exactly correct it should indicate
-        // the hemisphere correctly
-        if zone_letter < LatBand::from('N') {
-            // remove 10,000,000 meter offset used for southern hemisphere
-            y -= 10000000.0;
-        }
-
-      // There are 60 zones with zone 1 being at West -180 to -174
-      let lon_origin = ((zone_num - 1) * 6 - 180 + 3) as f64; // +3 puts origin in middle of zone
-
-      let ecc_prm_sq = (ecc_sq) / (1.0 - ecc_sq);
-
-      let m = y / k0;
-      let mu = m /
-        (a *
-            (1.0 - ecc_sq / 4.0 - 3.0 * ecc_sq * ecc_sq / 64.0 - 5.0 * ecc_sq * ecc_sq * ecc_sq / 256.0));
-
-      let phi1_rad = mu +
-        (3.0 * e1 / 2.0 - 27.0 * e1 * e1 * e1 / 32.0) *
-        f64::sin(2.0 * mu) +
-        (21.0 * e1 * e1 / 16.0 - 55.0 * e1 * e1 * e1 * e1 / 32.0) *
-        f64::sin(4.0 * mu) +
-        (151.0 * e1 * e1 * e1 / 96.0) *
-        f64::sin(6.0 * mu);
-      // double phi1 = ProjradToDeg(phi1_rad);
-
-      let n1 = a / f64::sqrt(1.0 - ecc_sq * phi1_rad.sin() * phi1_rad.sin());
-      let t1 = phi1_rad.tan() * phi1_rad.tan();
-      let c1 = ecc_prm_sq * phi1_rad.cos() * phi1_rad.cos();
-      let r1 = a * (1.0 - ecc_sq) / f64::powf(1.0 - ecc_sq * phi1_rad.sin() * phi1_rad.sin(), 1.5);
-      let d = x / (n1 * k0);
-
-      let mut lat = phi1_rad -
-        (n1 * phi1_rad.tan() / r1) *
-        (d * d / 2.0 -
-            (5.0 + 3.0 * t1 + 10.0 * c1 - 4.0 * c1 * c1 - 9.0 * ecc_prm_sq) *
-            d * d * d * d / 24.0 +
-            (61.0 + 90.0 * t1 + 298.0 * c1 + 45.0 * t1 * t1 - 252.0 * ecc_prm_sq - 3.0 * c1 * c1) *
-            d * d * d * d * d * d / 720.0);
-      lat = lat.to_degrees();
-
-      let mut lon = (d -
-          (1.0 + 2.0 * t1 + c1) *
-          d * d * d / 6.0 +
-          (5.0 - 2.0 * c1 + 28.0 * t1 - 3.0 * c1 * c1 + 8.0 * ecc_prm_sq + 24.0 * t1 * t1) *
-          d * d * d * d * d / 120.0) /
-          phi1_rad.cos();
-
-      lon = lon_origin + lon.to_degrees();
-
-        Some(LatLon {
-            lat: lat,
-            lon: lon
-        })
-    }
-
-    pub fn from_mgrs<M: Into<Mgrs>>(mgrs: M) -> LatLon {
+    pub fn from_mgrs<M: Into<Mgrs>>(mgrs: M) -> Self {
         let m = mgrs.into();
         m.to_ll()
     }
@@ -295,9 +163,112 @@ impl LatLon {
 
 impl From<Utm> for LatLon {
     fn from(u: Utm) -> Self {
-        match LatLon::from_utm(&u) {
-            Some(l) => l,
-            None => panic!("Couldn't convert UTM to Lat/Lon"),
-        }
+        /*!
+        Converts UTM zone/easting/northing coordinate to latitude/longitude
+
+        @param   {Utm}     utmCoord - UTM coordinate to be converted to latitude/longitude.
+        @returns {LatLon} Latitude/longitude of supplied grid reference.
+
+        @example
+          var grid = new Utm(31, 'N', 448251.795, 5411932.678);
+          var latlong = grid.toLatLonE(); // latlong.toString(): 48°51′29.52″N, 002°17′40.20″E
+        */
+        var z = this.zone;
+        var h = this.hemisphere;
+        var x = this.easting;
+        var y = this.northing;
+
+        var falseEasting = 500e3, falseNorthing = 10000e3;
+
+        var a = this.datum.ellipsoid.a, f = this.datum.ellipsoid.f;
+        // WGS 84:  a = 6378137, b = 6356752.314245, f = 1/298.257223563;
+
+        var k0 = 0.9996; // UTM scale on the central meridian
+
+        x = x - falseEasting;               // make x ± relative to central meridian
+        y = h=='S' ? y - falseNorthing : y; // make y ± relative to equator
+
+        // ---- from Karney 2011 Eq 15-22, 36:
+
+        var e = Math.sqrt(f*(2-f)); // eccentricity
+        var n = f / (2 - f);        // 3rd flattening
+        var n2 = n*n, n3 = n*n2, n4 = n*n3, n5 = n*n4, n6 = n*n5;
+
+        var A = a/(1+n) * (1 + 1/4*n2 + 1/64*n4 + 1/256*n6); // 2πA is the circumference of a meridian
+
+        var η = x / (k0*A);
+        var ξ = y / (k0*A);
+
+        var β = [ 0, // note β is one-based array (6th order Krüger expressions)
+            1/2*n - 2/3*n2 + 37/96*n3 - 1/360*n4 - 81/512*n5 + 96199/604800*n6,
+            1/48*n2 + 1/15*n3 - 437/1440*n4 + 46/105*n5 - 1118711/3870720*n6,
+            17/480*n3 - 37/840*n4 - 209/4480*n5 + 5569/90720*n6,
+            4397/161280*n4 - 11/504*n5 - 830251/7257600*n6,
+            4583/161280*n5 - 108847/3991680*n6,
+            20648693/638668800*n6 ];
+
+        var ξʹ = ξ;
+        for (var j=1; j<=6; j++) ξʹ -= β[j] * Math.sin(2*j*ξ) * Math.cosh(2*j*η);
+
+        var ηʹ = η;
+        for (var j=1; j<=6; j++) ηʹ -= β[j] * Math.cos(2*j*ξ) * Math.sinh(2*j*η);
+
+        var sinhηʹ = Math.sinh(ηʹ);
+        var sinξʹ = Math.sin(ξʹ), cosξʹ = Math.cos(ξʹ);
+
+        var τʹ = sinξʹ / Math.sqrt(sinhηʹ*sinhηʹ + cosξʹ*cosξʹ);
+
+        var τi = τʹ;
+        do {
+            var σi = Math.sinh(e*Math.atanh(e*τi/Math.sqrt(1+τi*τi)));
+            var τiʹ = τi * Math.sqrt(1+σi*σi) - σi * Math.sqrt(1+τi*τi);
+            var δτi = (τʹ - τiʹ)/Math.sqrt(1+τiʹ*τiʹ)
+                * (1 + (1-e*e)*τi*τi) / ((1-e*e)*Math.sqrt(1+τi*τi));
+             τi += δτi;
+        } while (Math.abs(δτi) > 1e-12); // using IEEE 754 δτi -> 0 after 2-3 iterations
+        // note relatively large convergence test as δτi toggles on ±1.12e-16 for eg 31 N 400000 5000000
+        var τ = τi;
+
+        var φ = Math.atan(τ);
+
+        var λ = Math.atan2(sinhηʹ, cosξʹ);
+
+        // ---- convergence: Karney 2011 Eq 26, 27
+
+        var p = 1;
+        for (var j=1; j<=6; j++) p -= 2*j*β[j] * Math.cos(2*j*ξ) * Math.cosh(2*j*η);
+        var q = 0;
+        for (var j=1; j<=6; j++) q += 2*j*β[j] * Math.sin(2*j*ξ) * Math.sinh(2*j*η);
+
+        var γʹ = Math.atan(Math.tan(ξʹ) * Math.tanh(ηʹ));
+        var γʺ = Math.atan2(q, p);
+
+        var γ = γʹ + γʺ;
+
+        // ---- scale: Karney 2011 Eq 28
+
+        var sinφ = Math.sin(φ);
+        var kʹ = Math.sqrt(1 - e*e*sinφ*sinφ) * Math.sqrt(1 + τ*τ) * Math.sqrt(sinhηʹ*sinhηʹ + cosξʹ*cosξʹ);
+        var kʺ = A / a / Math.sqrt(p*p + q*q);
+
+        var k = k0 * kʹ * kʺ;
+
+        // ------------
+
+        var λ0 = ((z-1)*6 - 180 + 3).toRadians(); // longitude of central meridian
+        λ += λ0; // move λ from zonal to global coordinates
+
+        // round to reasonable precision
+        var lat = Number(φ.toDegrees().toFixed(11)); // nm precision (1nm = 10^-11°)
+        var lon = Number(λ.toDegrees().toFixed(11)); // (strictly lat rounding should be φ⋅cosφ!)
+        var convergence = Number(γ.toDegrees().toFixed(9));
+        var scale = Number(k.toFixed(12));
+
+        var latLong = new LatLon(lat, lon, this.datum);
+        // ... and add the convergence and scale into the LatLon object ... wonderful JavaScript!
+        latLong.convergence = convergence;
+        latLong.scale = scale;
+
+        return latLong;
     }
 }

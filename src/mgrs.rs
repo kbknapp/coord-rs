@@ -89,39 +89,6 @@ impl Mgrs {
         }
     }
 
-    fn as_utm(&self) -> Utm {
-        /*!
-        Converts MGRS grid reference to UTM coordinate.
-
-        ### Returns
-         * A `Utm` struct
-
-        # Examples
-
-        ```
-        let mgrs = Mgrs::from("31U DQ 448251 11932");
-        let utm = mgrs.as_utm();
-        assert_eq!(&*utm.as_string(6), "31 N 448251 541193");
-        ```
-        */
-
-        // get easting specified by e100k
-        let e100k_num = self.gsid_100k.col.as_meters_from_zone(self.gzd.zone);
-
-        // get northing specified by n100k
-        let n100k_num = self.gsid_100k.row.as_meters_from_zone(self.gzd.zone);
-
-        // get latitude of (bottom of) band
-        let lat_band: Lat = self.gzd.band.into();
-
-        // 100km grid square row letters repeat every 2,000km north; add enough 2,000km blocks to get
-        // into required band
-        let n_band = LatLon::new(lat_band, 0).to_utm().northing; // northing of bottom of band
-        let mut n2m = 0; // northing of 2,000km block
-        while (n2m + n100k_num + self.northing) < n_band { n2m += 2000000; }
-
-        Utm::new(self.gzd.zone, self.gzd.band, e100k_num + self.easting, n2m + n100k_num + self.northing)
-    }
 
     pub fn to_ll_rect(self) -> [LatLon; 2] {
         /*!

@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::fmt;
 
 use Errors;
 use band::LatBand;
@@ -29,6 +30,16 @@ impl From<char> for Hemisphere {
     }
 }
 
+impl From<f64> for Hemisphere {
+    fn from(lat: f64) -> Self {
+        if lat >= 0.0 {
+            Hemisphere::N
+        } else {
+            Hemisphere::S
+        }
+    }
+}
+
 impl From<u32> for Hemisphere {
     fn from(c: u32) -> Self {
         Hemisphere::from(c as u8)
@@ -43,7 +54,7 @@ impl From<u8> for Hemisphere {
 
 impl<'s> From<&'s str> for Hemisphere {
     fn from(s: &'s str) -> Self {
-        Hemisphere::from(s.as_ref()).expect("Invalid Hemisphere character")
+        Hemisphere::from(s.as_ref())
     }
 }
 
@@ -79,5 +90,12 @@ impl From<Hemisphere> for char {
     fn from(h: Hemisphere) -> Self {
         use self::Hemisphere::{N, S};
         match h { N => 'N', S => 'S', }
+    }
+}
+
+impl fmt::Display for Hemisphere {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let c: char = (*self).into();
+        writeln!(f, "{}", c)
     }
 }

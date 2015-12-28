@@ -12,6 +12,7 @@ pub enum Errors {
     InvalidLatitude(Lat),
     InvalidLatitudeBand(char),
     InvalidDatum(String),
+    InvalidHemisphereChar(char),
 }
 
 impl fmt::Display for Errors {
@@ -31,6 +32,7 @@ impl Error for Errors {
             Errors::InvalidLatitude(..) => "latitude outside UTM limits",
             Errors::InvalidLatitudeBand(..) => "invalid Latitude band letter",
             Errors::InvalidDatum(..) => "invalid map datum was supplied",
+            Errors::InvalidHemisphereChar(..) => "invalid hemisphere character",
         }
     }
 
