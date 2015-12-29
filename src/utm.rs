@@ -71,7 +71,7 @@ impl Utm {
         }
     }
 
-    pub fn from_ll(ll: LatLon) -> Self {
+    pub fn from_ll(ll: &LatLon) -> Self {
         /*!
         Converts latitude/longitude to UTM coordinate.
 
@@ -89,26 +89,26 @@ impl Utm {
         let false_easting = 500e3;
         let false_northing = 10000e3;
 
-        let mut zone = (f64::floor((self.lon + 180.0) / 6.0) + 1.0) as u8; // longitudinal zone
+        let mut zone = (f64::floor((ll.lon + 180.0) / 6.0) + 1.0) as u8; // longitudinal zone
         let mut lamda0 = f64::to_radians(((zone - 1) * 6 - 180 + 3) as f64); // longitude of central meridian
 
         // ---- handle Norway/Svalbard exceptions
         // grid zones are 8° tall; 0°N is offset 10 into latitude bands array
         let mgrs_lat_bands = b"CDEFGHJKLMNPQRSTUVWXX"; // X is repeated for 80-84°N
-        let lat_band = mgrs_lat_bands[f64::floor(self.lat / 8.0 + 10.0) as usize];
+        let lat_band = mgrs_lat_bands[f64::floor(ll.lat / 8.0 + 10.0) as usize];
 
         // adjust zone & central meridian for Norway
-        if zone == 31 && lat_band == b'V' && self.lon >= 3.0 { zone += 1; lamda0 += f64::to_radians(6.0); }
+        if zone == 31 && lat_band == b'V' && ll.lon >= 3.0 { zone += 1; lamda0 += f64::to_radians(6.0); }
         // adjust zone & central meridian for Svalbard
-        if (zone == 32 && lat_band == b'X' && self.lon <  9.0)  { zone -= 1; lamda0 -= f64::to_radians(6.0); }
-        if (zone == 32 && lat_band == b'X' && self.lon >= 9.0)  { zone += 1; lamda0 += f64::to_radians(6.0); }
-        if (zone == 34 && lat_band == b'X' && self.lon <  21.0) { zone -= 1; lamda0 -= f64::to_radians(6.0); }
-        if (zone == 34 && lat_band == b'X' && self.lon >= 21.0) { zone += 1; lamda0 += f64::to_radians(6.0); }
-        if (zone == 36 && lat_band == b'X' && self.lon <  33.0) { zone -= 1; lamda0 -= f64::to_radians(6.0); }
-        if (zone == 36 && lat_band == b'X' && self.lon >= 33.0) { zone += 1; lamda0 += f64::to_radians(6.0); }
+        if (zone == 32 && lat_band == b'X' && ll.lon <  9.0)  { zone -= 1; lamda0 -= f64::to_radians(6.0); }
+        if (zone == 32 && lat_band == b'X' && ll.lon >= 9.0)  { zone += 1; lamda0 += f64::to_radians(6.0); }
+        if (zone == 34 && lat_band == b'X' && ll.lon <  21.0) { zone -= 1; lamda0 -= f64::to_radians(6.0); }
+        if (zone == 34 && lat_band == b'X' && ll.lon >= 21.0) { zone += 1; lamda0 += f64::to_radians(6.0); }
+        if (zone == 36 && lat_band == b'X' && ll.lon <  33.0) { zone -= 1; lamda0 -= f64::to_radians(6.0); }
+        if (zone == 36 && lat_band == b'X' && ll.lon >= 33.0) { zone += 1; lamda0 += f64::to_radians(6.0); }
 
-        let phi = f64::to_radians(self.lat);      // latitude ± from equator
-        let lamda = f64::to_radians(self.lon) - lamda0; // longitude ± from central meridian
+        let phi = f64::to_radians(ll.lat);      // latitude ± from equator
+        let lamda = f64::to_radians(ll.lon) - lamda0; // longitude ± from central meridian
 
         // WGS 84: a = 6378137, b = 6356752.314245, f = 1/298.257223563;
         let a = Datum::Wgs84.a();
@@ -189,19 +189,19 @@ impl Utm {
         // round to reasonable precision
         let to_precision = |x: i32, y: u32| -> i32 {
             let p = i32::pow(10, y);
-            (f64::round((x * p) as f64) / p as f64) as i32
+            (x * p) as i32 / p as i32
         };
         let to_precisionf = |x: f64, y: f64| -> f64 {
             let p = f64::powf(10.0, y);
-            f64::round((x * p) as f64) / p as f64
+            f64::round(x * p) / p
         };
 
         Utm {
             zone: zone,
-            hemisphere: Hemisphere::from(self.lat),
+            hemisphere: Hemisphere::from(ll.lat),
             easting: to_precision(x as i32 % 100000, 6), // nm precision,
             northing: to_precision(y as i32 % 100000, 6),
-            datum: Datum::Wgs84,
+            datum: ll.datum,
             convergence: Some(to_precisionf(gamma.to_degrees(), 9.0)),
             scale: Some(to_precisionf(k, 12.0)),
         }
@@ -230,11 +230,12 @@ impl Utm {
         let n100k_num = mgrs.gsid_100k.row.as_meters_from_zone(mgrs.gzd.zone);
 
         // get latitude of (bottom of) band
-        let lat_band: Lat = mgrs.gzd.band.into();
+        let lat_band: f64 = mgrs.gzd.band.into();
 
         // 100km grid square row letters repeat every 2,000km north; add enough 2,000km blocks to get
         // into required band
-        let n_band = LatLon::new(lat_band, 0).to_utm().northing; // northing of bottom of band
+        let utm: Utm = LatLon::new(lat_band, 0.0).unwrap().into();
+        let n_band = utm.northing; // northing of bottom of band
         let mut n2m = 0; // northing of 2,000km block
         while (n2m + n100k_num + mgrs.northing) < n_band { n2m += 2000000; }
 
@@ -331,36 +332,36 @@ impl Utm {
     //     }
     // }
 
-    pub fn to_mgrs(self, accuracy: Option<Accuracy>) -> Mgrs {
-        /*!
-        Converts UTM coordinate to MGRS reference.
-
-         @returns {Mgrs}
-         @throws  {Error} Invalid coordinate
-
-         @example
-           var utmCoord = new Utm(31, 'N', 448251, 5411932);
-           var mgrsRef = utmCoord.toMgrs(); // mgrsRef.toString() = '31U DQ 48251 11932'
-        */
-
-        let e100k = ColLetter::from_zone_and_easting(self.zone, self.easting);
-
-        let n100k = RowLetter::from_zone_and_northing(self.zone, self.northing);
-
-        // truncate easting/northing to within 100km grid square and round to nm precision
-        // round to reasonable precision
-        let to_precision = |x: i32, y: u32| -> usize {
-            let p = i32::pow(10, y);
-            (((x % p) * p) / p) as usize
-        };
-
-        Mgrs {
-            gzd: Gzd { zone: self.zone, band: LatBand::from(self.as_ll_e().lat) },
-            gsid_100k: GridSquareId100k { col: e100k, row: n100k },
-            easting: to_precision(self.easting, 6),
-            northing: to_precision(self.northing, 6),
-        }
-    }
+    // pub fn to_mgrs(self, accuracy: Option<Accuracy>) -> Mgrs {
+    //     /*!
+    //     Converts UTM coordinate to MGRS reference.
+    //
+    //      @returns {Mgrs}
+    //      @throws  {Error} Invalid coordinate
+    //
+    //      @example
+    //        var utmCoord = new Utm(31, 'N', 448251, 5411932);
+    //        var mgrsRef = utmCoord.toMgrs(); // mgrsRef.toString() = '31U DQ 48251 11932'
+    //     */
+    //
+    //     let e100k = ColLetter::from_zone_and_easting(self.zone, self.easting);
+    //
+    //     let n100k = RowLetter::from_zone_and_northing(self.zone, self.northing);
+    //
+    //     // truncate easting/northing to within 100km grid square and round to nm precision
+    //     // round to reasonable precision
+    //     let to_precision = |x: i32, y: u32| -> usize {
+    //         let p = i32::pow(10, y);
+    //         (((x % p) * p) / p) as usize
+    //     };
+    //
+    //     Mgrs {
+    //         gzd: Gzd { zone: self.zone, band: LatBand::from(self.as_ll_e().lat) },
+    //         gsid_100k: GridSquareId100k { col: e100k, row: n100k },
+    //         easting: to_precision(self.easting, 6),
+    //         northing: to_precision(self.northing, 6),
+    //     }
+    // }
 
     // pub fn get_100k_id(&self) -> GridSquareId100k {
     //     /*!

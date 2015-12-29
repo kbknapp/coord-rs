@@ -54,7 +54,7 @@ impl FromStr for Datum {
         let d = s.to_ascii_uppercase();
         match &*d {
             "WGS84" => Ok(Datum::Wgs84),
-            _ => Err(Errors::InvalidDatum(s))
+            _ => Err(Errors::InvalidDatum(s.to_owned()))
         }
     }
 }

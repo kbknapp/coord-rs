@@ -4,7 +4,7 @@ use std::fmt;
 use Errors;
 use band::LatBand;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Hemisphere {
     N,
     S,

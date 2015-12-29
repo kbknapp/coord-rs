@@ -13,6 +13,12 @@ use datum::Datum;
 pub struct LatLon {
     pub lat: f64,
     pub lon: f64,
+    /// Datum UTM coordinate is based on.
+    pub datum: Datum,
+    /// Meridian convergence (bearing of grid north clockwise from true north), in degrees
+    pub convergence: Option<f64>,
+    /// Grid scale factor
+    pub scale: Option<f64>,
 }
 
 impl LatLon {
@@ -22,7 +28,10 @@ impl LatLon {
         }
         Ok(LatLon {
             lat: lat,
-            lon: lon
+            lon: lon,
+            datum: Datum::Wgs84,
+            scale: None,
+            convergence: None,
         })
     }
 
@@ -120,49 +129,49 @@ impl LatLon {
         m.to_ll()
     }
 
-    pub fn rect_from_mgrs<M: Into<Mgrs>>(m: M) -> Option<[LatLon; 2]> {
-        let mgrs = m.into();
-        let bl = LatLon::from_utm(&mgrs.utm).expect("failed to convert MGRS to Lat/Lon");
+    // pub fn rect_from_mgrs<M: Into<Mgrs>>(m: M) -> Option<[LatLon; 2]> {
+    //     let mgrs = m.into();
+    //     let bl = LatLon::from_utm(&mgrs.utm).expect("failed to convert MGRS to Lat/Lon");
+    //
+    //     let tr = LatLon::from(
+    //         Utm {
+    //             n: mgrs.utm.n + mgrs.accuracy.as_numeric() as f64,
+    //             e: mgrs.utm.e + mgrs.accuracy.as_numeric() as f64,
+    //             gzd: Gzd { zone: mgrs.gzd.zone, band: mgrs.utm.gzd.letter }
+    //         }
+    //     );
+    //     Some([tr, bl])
+    // }
 
-        let tr = LatLon::from(
-            Utm {
-                n: mgrs.utm.n + mgrs.accuracy.as_numeric() as f64,
-                e: mgrs.utm.e + mgrs.accuracy.as_numeric() as f64,
-                gzd: Gzd { num: mgrs.utm.gzd.num, letter: mgrs.utm.gzd.letter }
-            }
-        );
-        Some([tr, bl])
-    }
-
-    pub fn to_mgrs(self, acc: Option<Accuracy>) -> Mgrs {
-        /*!
-        Conversion of lat/lon to MGRS.
-
-        ### Params
-         * **ll**: `latLon` struct with lat and lon properties on a WGS84 ellipsoid.
-         * **accuracy**: an optional `Accuracy`, default is `Accuracy::m1` (1 meter).
-        ### Return
-         * the `Mgrs` struct for the given location and accuracy.
-        */
-        Utm::from(self).to_mgrs(acc)
-    }
-
-    pub fn as_mgrs(&self, acc: Option<Accuracy>) -> Mgrs {
-        /*!
-        Conversion of lat/lon to MGRS.
-
-        ### Params
-         * **ll**: `latLon` struct with lat and lon properties on a WGS84 ellipsoid.
-         * **accuracy**: an optional `Accuracy`, default is `Accuracy::m1` (1 meter).
-        ### Return
-         * the `Mgrs` struct for the given location and accuracy.
-        */
-        Utm::from_ll(self).to_mgrs(acc)
-    }
+    // pub fn to_mgrs(self, acc: Option<Accuracy>) -> Mgrs {
+    //     /*!
+    //     Conversion of lat/lon to MGRS.
+    //
+    //     ### Params
+    //      * **ll**: `latLon` struct with lat and lon properties on a WGS84 ellipsoid.
+    //      * **accuracy**: an optional `Accuracy`, default is `Accuracy::m1` (1 meter).
+    //     ### Return
+    //      * the `Mgrs` struct for the given location and accuracy.
+    //     */
+    //     Utm::from(self).to_mgrs(acc)
+    // }
+    //
+    // pub fn as_mgrs(&self, acc: Option<Accuracy>) -> Mgrs {
+    //     /*!
+    //     Conversion of lat/lon to MGRS.
+    //
+    //     ### Params
+    //      * **ll**: `latLon` struct with lat and lon properties on a WGS84 ellipsoid.
+    //      * **accuracy**: an optional `Accuracy`, default is `Accuracy::m1` (1 meter).
+    //     ### Return
+    //      * the `Mgrs` struct for the given location and accuracy.
+    //     */
+    //     Utm::from_ll(self).to_mgrs(acc)
+    // }
 }
 
 impl From<Utm> for LatLon {
-    fn from(u: Utm) -> Self {
+    fn from(utm: Utm) -> Self {
         /*!
         Converts UTM zone/easting/northing coordinate to latitude/longitude
 
@@ -170,105 +179,120 @@ impl From<Utm> for LatLon {
         @returns {LatLon} Latitude/longitude of supplied grid reference.
 
         @example
-          var grid = new Utm(31, 'N', 448251.795, 5411932.678);
-          var latlong = grid.toLatLonE(); // latlong.toString(): 48°51′29.52″N, 002°17′40.20″E
+          let grid = new Utm(31, 'N', 448251.795, 5411932.678);
+          let latlong = grid.toLatLonE(); // latlong.toString(): 48°51′29.52″N, 002°17′40.20″E
         */
-        var z = this.zone;
-        var h = this.hemisphere;
-        var x = this.easting;
-        var y = this.northing;
+        let z = utm.zone;
+        let h = utm.hemisphere;
+        let x = utm.easting;
+        let y = utm.northing;
 
-        var falseEasting = 500e3, falseNorthing = 10000e3;
+        let false_easting = 500_000;
+        let false_northing = 10_000_000;
 
-        var a = this.datum.ellipsoid.a, f = this.datum.ellipsoid.f;
         // WGS 84:  a = 6378137, b = 6356752.314245, f = 1/298.257223563;
+        let a = utm.datum.a();
+        let f = utm.datum.f();
 
-        var k0 = 0.9996; // UTM scale on the central meridian
+        let k0 = 0.9996; // UTM scale on the central meridian
 
-        x = x - falseEasting;               // make x ± relative to central meridian
-        y = h=='S' ? y - falseNorthing : y; // make y ± relative to equator
+        x = x - false_easting;               // make x ± relative to central meridian
+        y = if h == Hemisphere::S { y - false_northing } else { y }; // make y ± relative to equator
 
         // ---- from Karney 2011 Eq 15-22, 36:
 
-        var e = Math.sqrt(f*(2-f)); // eccentricity
-        var n = f / (2 - f);        // 3rd flattening
-        var n2 = n*n, n3 = n*n2, n4 = n*n3, n5 = n*n4, n6 = n*n5;
+        let e = f64::sqrt(f * (2.0 - f)); // eccentricity
+        let n = f / (2.0 - f);        // 3rd flattening
+        let n2 = n * n;
+        let n3 = n * n2;
+        let n4 = n * n3;
+        let n5 = n * n4;
+        let n6 = n * n5;
 
-        var A = a/(1+n) * (1 + 1/4*n2 + 1/64*n4 + 1/256*n6); // 2πA is the circumference of a meridian
+        let A = a / (1.0 + n) * (1.0 + 1.0 / 4.0 * n2 + 1.0 / 64.0 * n4 + 1.0 / 256.0 * n6); // 2πA is the circumference of a meridian
 
-        var η = x / (k0*A);
-        var ξ = y / (k0*A);
+        let eta = x as f64 / (k0*A);
+        let xi = y as f64 / (k0*A);
 
-        var β = [ 0, // note β is one-based array (6th order Krüger expressions)
-            1/2*n - 2/3*n2 + 37/96*n3 - 1/360*n4 - 81/512*n5 + 96199/604800*n6,
-            1/48*n2 + 1/15*n3 - 437/1440*n4 + 46/105*n5 - 1118711/3870720*n6,
-            17/480*n3 - 37/840*n4 - 209/4480*n5 + 5569/90720*n6,
-            4397/161280*n4 - 11/504*n5 - 830251/7257600*n6,
-            4583/161280*n5 - 108847/3991680*n6,
-            20648693/638668800*n6 ];
+        let beta = [ 0.0, // note beta is one-based array (6th order Krüger expressions)
+            1.0 / 2.0 * n - 2.0 / 3.0 * n2 + 37.0 / 96.0 * n3 - 1.0 / 360.0 * n4 - 81.0 / 512.0 * n5 + 96199.0 / 604800.0 * n6,
+            1.0 / 48.0 * n2 + 1.0 / 15.0 * n3 - 437.0 / 1440.0 * n4 + 46.0 / 105.0 * n5 - 1118711.0 / 3870720.0 * n6,
+            17.0 / 480.0 * n3 - 37.0 / 840.0 * n4 - 209.0 / 4480.0 * n5 + 5569.0 / 90720.0 * n6,
+            4397.0 / 161280.0 * n4 - 11.0 / 504.0 * n5 - 830251.0 / 7257600.0 * n6,
+            4583.0 / 161280.0 * n5 - 108847.0 / 3991680.0 * n6,
+            20648693.0 / 638668800.0 * n6 ];
 
-        var ξʹ = ξ;
-        for (var j=1; j<=6; j++) ξʹ -= β[j] * Math.sin(2*j*ξ) * Math.cosh(2*j*η);
+        let mut xi2 = xi;
+        for j in 1..6 { xi2 -= beta[j] * f64::sin(2.0 * j as f64 * xi) * f64::cosh(2.0 * j as f64 * eta); }
 
-        var ηʹ = η;
-        for (var j=1; j<=6; j++) ηʹ -= β[j] * Math.cos(2*j*ξ) * Math.sinh(2*j*η);
+        let mut eta2 = eta;
+        for j in 1..6 { eta2 -= beta[j] * f64::cos(2.0 * j as f64* xi) * f64::sinh(2.0 * j as f64 * eta); }
 
-        var sinhηʹ = Math.sinh(ηʹ);
-        var sinξʹ = Math.sin(ξʹ), cosξʹ = Math.cos(ξʹ);
+        let sinheta2 = f64::sinh(eta2);
+        let sinxi2 = f64::sin(xi2);
+        let cosxi2 = f64::cos(xi2);
 
-        var τʹ = sinξʹ / Math.sqrt(sinhηʹ*sinhηʹ + cosξʹ*cosξʹ);
+        let tau2 = sinxi2 / f64::sqrt(sinheta2 * sinheta2 + cosxi2 * cosxi2);
 
-        var τi = τʹ;
-        do {
-            var σi = Math.sinh(e*Math.atanh(e*τi/Math.sqrt(1+τi*τi)));
-            var τiʹ = τi * Math.sqrt(1+σi*σi) - σi * Math.sqrt(1+τi*τi);
-            var δτi = (τʹ - τiʹ)/Math.sqrt(1+τiʹ*τiʹ)
-                * (1 + (1-e*e)*τi*τi) / ((1-e*e)*Math.sqrt(1+τi*τi));
-             τi += δτi;
-        } while (Math.abs(δτi) > 1e-12); // using IEEE 754 δτi -> 0 after 2-3 iterations
-        // note relatively large convergence test as δτi toggles on ±1.12e-16 for eg 31 N 400000 5000000
-        var τ = τi;
+        let taui = tau2;
+        loop {
+            let sigmai = f64::sinh(e * f64::atanh(e * taui / f64::sqrt(1.0 + taui * taui)));
+            let taui2 = taui * f64::sqrt(1.0 + sigmai * sigmai) - sigmai * f64::sqrt(1.0 + taui * taui);
+            let deltataui = (tau2 - taui2) / f64::sqrt(1.0 + taui2 * taui2)
+                * (1.0 + (1.0 - e * e) * taui * taui) / ((1.0 - e * e) * f64::sqrt(1.0 + taui * taui));
+             taui += deltataui;
+            if !(f64::abs(deltataui) > 1e-12) { break; } // using IEEE 754 deltataui -> 0 after 2-3 iterations
+        }
+        // note relatively large convergence test as deltataui toggles on ±1.12e-16 for eg 31 N 400000 5000000
+        let tau = taui;
 
-        var φ = Math.atan(τ);
+        let phi = f64::atan(tau);
 
-        var λ = Math.atan2(sinhηʹ, cosξʹ);
+        let lamda = f64::atan2(sinheta2, cosxi2);
 
         // ---- convergence: Karney 2011 Eq 26, 27
 
-        var p = 1;
-        for (var j=1; j<=6; j++) p -= 2*j*β[j] * Math.cos(2*j*ξ) * Math.cosh(2*j*η);
-        var q = 0;
-        for (var j=1; j<=6; j++) q += 2*j*β[j] * Math.sin(2*j*ξ) * Math.sinh(2*j*η);
+        let mut p = 1.0;
+        for j in 1..6 { p -= 2.0 * j as f64 * beta[j] * f64::cos(2.0 * j as f64 * xi) * f64::cosh(2.0 * j as f64 * eta); }
+        let mut q = 0.0;
+        for j in 1..6 { q += 2.0 * j as f64 * beta[j] * f64::sin(2.0 * j as f64 * xi) * f64::sinh(2.0 * j as f64 * eta); }
 
-        var γʹ = Math.atan(Math.tan(ξʹ) * Math.tanh(ηʹ));
-        var γʺ = Math.atan2(q, p);
+        let gamma2 = f64::atan(f64::tan(xi2) * f64::tanh(eta2));
+        let gamma3 = f64::atan2(q, p);
 
-        var γ = γʹ + γʺ;
+        let gamma = gamma2 + gamma3;
 
         // ---- scale: Karney 2011 Eq 28
 
-        var sinφ = Math.sin(φ);
-        var kʹ = Math.sqrt(1 - e*e*sinφ*sinφ) * Math.sqrt(1 + τ*τ) * Math.sqrt(sinhηʹ*sinhηʹ + cosξʹ*cosξʹ);
-        var kʺ = A / a / Math.sqrt(p*p + q*q);
+        let sinphi = f64::sin(phi);
+        let k2 = f64::sqrt(1.0 - e * e * sinphi * sinphi) * f64::sqrt(1.0 + tau * tau) * f64::sqrt(sinheta2 *sinheta2 + cosxi2 * cosxi2);
+        let k3 = A / a / f64::sqrt(p * p + q * q);
 
-        var k = k0 * kʹ * kʺ;
+        let k = k0 * k2 * k3;
 
         // ------------
 
-        var λ0 = ((z-1)*6 - 180 + 3).toRadians(); // longitude of central meridian
-        λ += λ0; // move λ from zonal to global coordinates
+        let lamda0: f64 = f64::to_radians(((z - 1) * 6 - 180 + 3) as f64); // longitude of central meridian
+        lamda += lamda0; // move lamda from zonal to global coordinates
 
         // round to reasonable precision
-        var lat = Number(φ.toDegrees().toFixed(11)); // nm precision (1nm = 10^-11°)
-        var lon = Number(λ.toDegrees().toFixed(11)); // (strictly lat rounding should be φ⋅cosφ!)
-        var convergence = Number(γ.toDegrees().toFixed(9));
-        var scale = Number(k.toFixed(12));
+        let to_precisionf = |x: f64, y: usize| -> f64 {
+            let p = f64::powf(10.0, y as f64);
+            f64::round(x * p) / p
+        };
 
-        var latLong = new LatLon(lat, lon, this.datum);
-        // ... and add the convergence and scale into the LatLon object ... wonderful JavaScript!
-        latLong.convergence = convergence;
-        latLong.scale = scale;
+        // round to reasonable precision
+        let lat = to_precisionf(phi.to_degrees(), 11); // nm precision (1nm = 10^-11°)
+        let lon = to_precisionf(lamda.to_degrees(), 11); // (strictly lat rounding should be phi⋅cosphi!)
+        let convergence = to_precisionf(gamma.to_degrees(), 9);
+        let scale = to_precisionf(k, 12);
 
-        return latLong;
+        LatLon {
+            lat: lat,
+            lon: lon,
+            datum: utm.datum,
+            convergence: Some(convergence),
+            scale: Some(scale),
+        }
     }
 }

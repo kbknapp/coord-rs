@@ -81,50 +81,50 @@ impl Mgrs {
         */
 
         Mgrs {
-            gzd: Gzd { zone: zone, band: band },
-            gsid_100k: GridSquareId100k{ col: e100k, row: n100k },
+            gzd: Gzd { zone: zone, band: band.into() },
+            gsid_100k: GridSquareId100k { row: e100k.into(), col: n100k.into() },
             easting: easting,
             northing: northing,
-            accuracy: self::get_accuracy(easting, northing).expect("Invalid MGRS grid")
+            accuracy: get_accuracy(easting, northing).expect("Invalid MGRS grid")
         }
     }
 
 
-    pub fn to_ll_rect(self) -> [LatLon; 2] {
-        /*!
-        Conversion of MGRS to lat/lon.
-
-        ### Params
-         * **mgrs** Generic object that supports becoming an `Mgrs` struct.
-        ### Return
-         * An array of `latLon` structs which represents bottom-left, and top-right values in WGS84,
-           representing the bounding box for the provided MGRS reference.
-        */
-        LatLon::rect_from_mgrs(self).expect("failed to convert MGRS to Lat/Lon")
-    }
-
-    pub fn as_ll_rect(&self) -> [LatLon; 2] {
-        /*!
-        Conversion of MGRS to lat/lon.
-
-        ### Params
-         * **mgrs** Generic object that supports becoming an `Mgrs` struct.
-        ### Return
-         * An array of `latLon` structs which represents bottom-left, and top-right values in WGS84,
-           representing the bounding box for the provided MGRS reference.
-        */
-        LatLon::rect_from_mgrs(self).expect("failed to convert MGRS to Lat/Lon")
-    }
+    // pub fn to_ll_rect(self) -> [LatLon; 2] {
+    //     /*!
+    //     Conversion of MGRS to lat/lon.
+    //
+    //     ### Params
+    //      * **mgrs** Generic object that supports becoming an `Mgrs` struct.
+    //     ### Return
+    //      * An array of `latLon` structs which represents bottom-left, and top-right values in WGS84,
+    //        representing the bounding box for the provided MGRS reference.
+    //     */
+    //     LatLon::rect_from_mgrs(self).expect("failed to convert MGRS to Lat/Lon")
+    // }
+    //
+    // pub fn as_ll_rect(&self) -> [LatLon; 2] {
+    //     /*!
+    //     Conversion of MGRS to lat/lon.
+    //
+    //     ### Params
+    //      * **mgrs** Generic object that supports becoming an `Mgrs` struct.
+    //     ### Return
+    //      * An array of `latLon` structs which represents bottom-left, and top-right values in WGS84,
+    //        representing the bounding box for the provided MGRS reference.
+    //     */
+    //     LatLon::rect_from_mgrs(self).expect("failed to convert MGRS to Lat/Lon")
+    // }
 
     /// Derives the centerpoint of an MGRS reference
     pub fn to_ll(self) -> LatLon {
-        LatLon::from(self.utm)
+        LatLon::from(self.into())
     }
 
     /// Derives the centerpoint of an MGRS reference
-    pub fn as_ll(&self) -> LatLon {
-        LatLon::from(self.utm)
-    }
+    // pub fn as_ll(&self) -> LatLon {
+    //     LatLon::from(self.utm)
+    // }
 
     fn as_string(&self, accuracy: Accuracy) -> String {
         /*!
@@ -152,26 +152,26 @@ impl Mgrs {
         ```
         */
 
-        let digits = accuracy.as_num_digits() / 2;
+        let digits: i32 = accuracy.as_num_digits() as i32 / 2;
         // set required precision
-        let easting = (f64::floor(self.easting / f64::powi(10, 5 - digits))) as usize;
-        let northing = (f64::floor(self.northing / f64::powi(10, 5 - digits))) as usize;
+        let easting = (f64::floor(self.easting as f64 / f64::powi(10.0, 5 - digits))) as usize;
+        let northing = (f64::floor(self.northing  as f64 / f64::powi(10.0, 5 - digits))) as usize;
 
-        format!("{0:02}{1} {2}{3} {4:0<6$} {5:0<6$}", self.gzd.zone, self.gzd.band, self.gsid_100k.col, self.gsid_100k.row, easting, northing, digits)
+        format!("{0:02}{1} {2}{3} {4:0<6$} {5:0<6$}", self.gzd.zone, self.gzd.band, self.gsid_100k.col, self.gsid_100k.row, easting, northing, digits as usize)
     }
 }
 
-impl From<Utm> for Mgrs {
-    fn from(utm: Utm) -> Self {
-        utm.to_mgrs(None)
-    }
-}
+// impl From<Utm> for Mgrs {
+//     fn from(utm: Utm) -> Self {
+//         Mgrs::from_utm(&utm)
+//     }
+// }
 
-impl From<LatLon> for Mgrs {
-    fn from(ll: LatLon) -> Self {
-        ll.as_mgrs(None)
-    }
-}
+// impl From<LatLon> for Mgrs {
+//     fn from(ll: LatLon) -> Self {
+//         ll.as_mgrs(None)
+//     }
+// }
 
 impl<'a> From<&'a Mgrs> for Mgrs {
     fn from(m: &'a Mgrs) -> Self {

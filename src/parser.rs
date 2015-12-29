@@ -56,13 +56,13 @@ impl<'a> MgrsParser<'a> {
             self.pos -= 1;
             unsafe { str::from_utf8_unchecked(&self.mgrs[self.start..self.pos]) }
         };
-        mgrs.utm.gzd.num = s_num.parse().expect("Failed to parse bytes to number in MGRS string");
+        mgrs.gzd.zone = s_num.parse().expect("Failed to parse bytes to number in MGRS string");
     }
 
     fn zone_letter(&mut self, mgrs: &mut Mgrs) {
         self.pos += 1;
         let c = self.mgrs[self.pos] as char;
-        mgrs.utm.gzd.letter = LatBand::from(c);
+        mgrs.gzd.band = LatBand::from(c);
     }
 
     fn col_letter(&mut self, mgrs: &mut Mgrs) {
@@ -98,15 +98,15 @@ impl<'a> MgrsParser<'a> {
 
         mgrs.accuracy = Accuracy::from_num_digits(loc.len()).expect("Failed to retrieve accuracy");
 
-        let set = get_100k_set_for_zone(mgrs.utm.gzd.num as usize);
+        let set = get_100k_set_for_zone(mgrs.gzd.zone as usize);
 
-        let e_100k = mgrs.gsid_100k.col.get_easting_with_set(set as u8).expect("failed to get col letter");
-        let mut n_100k = mgrs.gsid_100k.row.get_northing_with_set(set as u8).expect("failed to get row letter");
+        let e_100k = mgrs.gsid_100k.col.get_easting_with_set(set as u8);
+        let mut n_100k = mgrs.gsid_100k.row.get_northing_with_set(set as u8);
 
         // We have a bug where the northing may be 2000000 too low.
         // How do we know when to roll over?
 
-        let min_n = mgrs.utm.gzd.letter.get_min_northing().expect("faild to get min northing");
+        let min_n = mgrs.gzd.band.get_min_northing().expect("faild to get min northing");
         while n_100k < min_n {
             n_100k += 2000000.0;
         }
@@ -118,8 +118,8 @@ impl<'a> MgrsParser<'a> {
         let ef = e_str.parse::<f64>().expect("failed to parse easting in MGRS string") * accuracy_bonus;
         let nf = n_str.parse::<f64>().expect("failed to parse northing in MGRS string") * accuracy_bonus;
 
-        mgrs.utm.e = ef + e_100k;
-        mgrs.utm.n = nf + n_100k;
+        mgrs.easting = ef + e_100k;
+        mgrs.northing = nf + n_100k;
     }
 }
 

@@ -1,6 +1,7 @@
 use std::convert::From;
 use std::str::{self, FromStr};
 use std::error::Error;
+use std::fmt;
 
 use Errors;
 
@@ -153,7 +154,7 @@ impl From<char> for LatBand {
             'H' | 'h' => H, 'J' | 'j' => J, 'K' | 'k' => K, 'L' | 'l' => L, 'M' | 'm' => M,
             'N' | 'n' => N, 'P' | 'p' => P, 'Q' | 'q' => Q, 'R' | 'r' => R, 'S' | 's' => S,
             'T' | 't' => T, 'U' | 'u' => U, 'V' | 'v' => V, 'W' | 'w' => W, 'X' | 'x' => X,
-            _ => panic!("invalid latitude band letter {}", c), 
+            _ => panic!("invalid latitude band letter {}", c),
         }
     }
 }
@@ -214,5 +215,12 @@ impl Default for LatBand {
     fn default() -> Self {
         // Shuold we use an "invalid" letter?
         LatBand::C
+    }
+}
+
+impl fmt::Display for LatBand {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let c: char = (*self).into();
+        writeln!(f, "{}", c)
     }
 }

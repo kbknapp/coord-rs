@@ -36,9 +36,9 @@ pub use accuracy::Accuracy;
 pub use latlon::LatLon;
 
 pub type Lat = f64;
-impl From<LatBand> for Lat {
+impl From<LatBand> for f64 {
     fn from(band: LatBand) -> Self {
-        (band.index()-10)*8
+        ((band.index() - 10) * 8) as f64
     }
 }
 pub type Lon = f64;

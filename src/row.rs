@@ -1,3 +1,4 @@
+use std::fmt;
 use std::str::FromStr;
 use std::convert::From;
 
@@ -19,7 +20,7 @@ impl RowLetter {
     }
 
     pub fn index_for_northing(northing: i32) -> u8 {
-        (f64::floor(northing / 100000) as u8) % 20
+        (f64::floor(northing as f64 / 100000.0) as u8) % 20
     }
 
     pub fn letter_at(zone: u8, index: u8) -> Self {
@@ -168,5 +169,12 @@ mod test {
         let cl = RowLetter::C;
         let c = char::from(cl);
         assert_eq!(c, 'C');
+    }
+}
+
+impl fmt::Display for RowLetter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let c: char = (*self).into();
+        writeln!(f, "{}", c)
     }
 }

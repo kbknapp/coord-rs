@@ -1,3 +1,5 @@
+use std::fmt;
+
 use ascii;
 use Errors;
 
@@ -19,7 +21,7 @@ impl ColLetter {
     }
 
     pub fn index_for_easting(easting: i32) -> u8 {
-        (f64::floor(easting / 100000) as u8) - 1
+        (f64::floor(easting as f64 / 100000.0) as u8) - 1
     }
 
     pub fn letter_at(zone: u8, index: u8) -> Self {
@@ -165,5 +167,12 @@ mod test {
         let cl = ColLetter::C;
         let c = char::from(cl);
         assert_eq!(c, 'C');
+    }
+}
+
+impl fmt::Display for ColLetter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let c: char = (*self).into();
+        writeln!(f, "{}", c)
     }
 }
